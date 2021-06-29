@@ -298,6 +298,9 @@ def plot_ospa_performance(ground_truth, filters, save_figure=True):
 
 
 def generate_plots(ground_truth, measurement_sets, filters, model, save_figure=True):
+    # Check if the figures directory exists, if not creates it
+    if not os.path.isdir(FIGURES_PATH):
+        os.mkdir(FIGURES_PATH)
     plot_tracks(ground_truth, measurement_sets, filters, model, save_figure)
     plot_cardinality_performance(ground_truth, filters, save_figure)
     plot_ospa_performance(ground_truth, filters, save_figure)

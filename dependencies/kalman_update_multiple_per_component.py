@@ -1,3 +1,17 @@
+# -*- coding: utf-8 -*-
+# File: kalman_update_multiple_per_component.py                                #
+# Project: Multi-object Filters                                                #
+# File Created: Monday, 7th June 2021 9:16:17 am                               #
+# Author: Flávio Eler De Melo                                                  #
+# -----                                                                        #
+# This package/module implements the Kalman filter update on a per Gaussian    #
+# mixture component basis.                                                     #
+# -----                                                                        #
+# Last Modified: Tuesday, 29th June 2021 12:13:09 pm                           #
+# Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                    #
+# -----                                                                        #
+# License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)    #
+
 import numpy as np
 import scipy as sp
 

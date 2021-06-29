@@ -1,3 +1,16 @@
+# -*- coding: utf-8 -*-
+# File: k_shortest_path_any.py                                                 #
+# Project: Multi-object Filters                                                #
+# File Created: Monday, 7th June 2021 9:16:17 am                               #
+# Author: Flávio Eler De Melo                                                  #
+# -----                                                                        #
+# This package/module implements Yen's k-Shortest Path algorithm for a graph.  #
+# -----                                                                        #
+# Last Modified: Tuesday, 29th June 2021 11:55:09 am                           #
+# Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                    #
+# -----                                                                        #
+# License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)    #
+
 import numpy as np
 from scipy.sparse import coo_matrix
 from termcolor import cprint
@@ -9,36 +22,20 @@ def k_shortest_path_any(net_cost_matrix, source, destination, k_paths):
         Function k_shortest_path_any(net_cost_matrix, source, destination, k_paths) 
         returns the K first shortest paths (k_paths) from node source to node destination
         in the a network of N nodes represented by the NxN matrix netCostMatrix.
-        In netCostMatrix, cost of 'inf' represents the 'absence' of a link 
+        In net_cost_matrix, cost of 'inf' represents the 'absence' of a link 
         It returns 
         shortest_paths: the list of K shortest paths (in cell array 1 x K) and 
         total_costs   : costs of the K shortest paths (in array 1 x K)
-        ==============================================================
-        Meral Shirazipour
-        This function is based on Yen's k-Shortest Path algorithm (1971)
-        This function calls a slightly modified function dijkstra() 
-        by Xiaodong Wang 2004.
-        * netCostMatrix must have positive weights/costs
-        Modified by BT VO
+
         Replaces dijkstra's algorithm with Derek O'Connor's Bellman-Ford-Moore implementation
         which allows negative entries in cost matrices provided there are no negative cycles
         and used in GLMB filter codes for prediction
-        * netCostMatrix can have negative weights/costs
-        ==============================================================
-        DATE :           December 9 decembre 2009                                 
-        Last Updated:    August 2 2010; January 6 2011; August 2 2011
-        ----Changes April 2 2010:----
-        1-previous version(9/12/2009)did not handle some exceptions which should
-        have returned empty matrices for the return values (added lines 20 and 29)
-        2-includes the changes proposed by Darren Rowland
-        ----Changes January 6 2011:----
-        1-fixed a bug reported by Babak Zafari that prevented from finding ALL
-        the shortest paths in large networks
+        * net_cost_matrix can have negative weights/costs
         ==============================================================
     '''
 
     if ((source > net_cost_matrix.shape[0] - 1) or (destination > net_cost_matrix.shape[1] - 1)):
-        cprint('The source or destination node are not part of netCostMatrix', 'yellow')
+        cprint('The source or destination node are not part of net_cost_matrix', 'yellow')
         shortest_paths = {}
         total_costs = {}
     else:
@@ -140,4 +137,55 @@ def k_shortest_path_any(net_cost_matrix, source, destination, k_paths):
                     pass
 
     return shortest_paths, total_costs
+
+# This method is just a wrapper for the k-shortest path algorithm
+def k_shortest_wrap_pred(r_s, k):
+    if k == 0:
+        paths = {}
+        costs = {}
+        return paths, costs
+    
+    n_s = len(r_s)
+    i_s = np.argsort(-r_s)
+    d_s = r_s[i_s]
+
+    # Cost matrix for paths
+    # !REMEMBER ZERO COST DENOTES NO ARC CONNECTION, 
+    # I.E. INF COST BECAUSE OF SPARSE MATRIX INPUT FOR KSHORTEST PATH
+    cost_matrix = np.zeros((n_s, n_s))
+
+    for i in range(n_s):
+        # Only allow jumps to higher numbered nodes, inf costs 
+        # (equiv to zero cost for sparse representation) on lower diag 
+        # prohibit reverse jumps (hence cycles)
+        cost_matrix[:i, i] = d_s[i]
+    
+    # Extra 2 states for start and finish points
+    # !REMEMBER ZERO COST DENOTES NO ARC CONNECTION, 
+    # I.E. INF COST BECAUSE OF SPARSE MATRIX INPUT FOR KSHORTEST PATH
+    cost_matrix_aug = np.zeros((n_s + 2, n_s + 2))
+    # Must enter into one of original nodes OR
+    cost_matrix_aug[0, 1:-1] = d_s
+    # Exit immediately indicating no node selection 
+    # (all target die) (eps used to denote zero cost or free jump, 
+    # as zero is used for inf in sparse format)
+    cost_matrix_aug[0, -1] = np.spacing(0)
+    # Must exit at last node at no cost 
+    # (eps used to denote zero cost or free jump, 
+    # as zero is used for inf in sparse format)
+    cost_matrix_aug[1:-1,-1] = np.spacing(0)
+    # Cost for original nodes
+    cost_matrix_aug[1:-1, 1:-1] = cost_matrix
+
+    # Do k-shortest path
+    paths, costs = k_shortest_path_any(cost_matrix_aug, 0, n_s + 1, k)
+    
+    for p in paths.keys():
+        if ((len(paths[p]) == 2) and (paths[p][0] == 0) and (paths[p][1] == n_s + 1)):
+            paths[p] = []
+        else:
+            paths[p] = [node-1 for node in paths[p][1:-1]] # Strip dummy entry and finish nodes
+            paths[p] = i_s[paths[p]].tolist() # Convert index back to unsorted input
+
+    return paths, costs
 

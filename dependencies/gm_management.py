@@ -1,6 +1,26 @@
+# -*- coding: utf-8 -*-
+# File: gm_management.py                                                       #
+# Project: Multi-object Filters                                                #
+# File Created: Tuesday, 8th June 2021 5:02:33 pm                              #
+# Author: Flávio Eler De Melo                                                  #
+# -----                                                                        #
+# This package/module implements methods for pruning, merging and capping      #
+# Gaussian mixture components.
+# -----                                                                        #
+# Last Modified: Tuesday, 29th June 2021 11:53:20 am                           #
+# Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                    #
+# -----                                                                        #
+# License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)    #
 import numpy as np
 import scipy as sp
 from copy import copy
+
+# Get components
+def get_components(X, c):
+    if len(X) == 0:
+        return np.array([[]])
+    else:
+        return X[c, :]
 
 # Prune GM components
 def gm_prune(w, x, P, threshold):
@@ -11,13 +31,14 @@ def gm_prune(w, x, P, threshold):
         return
     
     idx = w > threshold
+    sum_w = np.sum(w)
     w_new = copy(w[idx])
     x_new = copy(x[:, idx])
     P_new = copy(P[:, :, idx])
     w.resize(w_new.shape, refcheck=False)
     x.resize(x_new.shape, refcheck=False)
     P.resize(P_new.shape, refcheck=False)
-    w[:] = w_new
+    w[:] = w_new * ( sum_w / np.sum(w_new) )
     x[:] = x_new
     P[:] = P_new
     
@@ -101,7 +122,7 @@ def gm_cap(w, x, P, max_number):
         x.resize(x_new.shape, refcheck=False)
         P.resize(P_new.shape, refcheck=False)
 
-        w[:] = w_new * (sum_w / np.sum(w_new))
+        w[:] = w_new * ( sum_w / np.sum(w_new) )
         x[:] = x[:, idx]
         P[:] = P[:, :, idx]
 
@@ -122,12 +143,13 @@ def gm_prune_with_labels(w, x, P, l, threshold):
         x_new = x[:, idx]
         P_new = P[:, :, idx]
 
+        sum_w = np.sum(w)
         w.resize(w_new.shape, refcheck=False)
         l.resize(l_new.shape, refcheck=False)
         x.resize(x_new.shape, refcheck=False)
         P.resize(P_new.shape, refcheck=False)
         
-        w[:] = w_new
+        w[:] = w_new * ( sum_w / np.sum(w_new) )
         l[:] = l_new
         x[:] = x_new
         P[:] = P_new
@@ -239,7 +261,7 @@ def gm_cap_with_labels(w, x, P, l, max_number, min_number_of_labels):
         x.resize(x_new.shape, refcheck=False)
         P.resize(P_new.shape, refcheck=False)
         
-        w[:] = w_new * (sum_w / np.sum(w_new))
+        w[:] = w_new * ( sum_w / np.sum(w_new) )
         l[:] = l_new
         x[:] = x_new
         P[:] = P_new

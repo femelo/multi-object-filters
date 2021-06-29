@@ -1,11 +1,23 @@
+# -*- coding: utf-8 -*-
+# File: ospa_dist.py                                                           #
+# Project: Multi-object Filters                                                #
+# File Created: Monday, 7th June 2021 9:16:17 am                               #
+# Author: Flávio Eler De Melo                                                  #
+# -----                                                                        #
+# This package/module implements the computation of the OSPA metric.           #
+# -----                                                                        #
+# Last Modified: Tuesday, 29th June 2021 12:17:25 pm                           #
+# Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                    #
+# -----                                                                        #
+# License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)    #
 import numpy as np
 from munkres import Munkres
 def ospa_dist(X, Y, c=100.0, p=1):
     # This is the Python code for OSPA distance proposed in
     # 
-    # D. Schuhmacher, B.-T. Vo, and B.-N. Vo, "A consistent metric for performance evaluation in multi-object filtering," IEEE Trans. Signal Processing, Vol. 56, No. 8 Part 1, pp. 3447� 3457, 2008.
+    # D. Schuhmacher, B.-T. Vo, and B.-N. Vo, "A consistent metric for performance evaluation in multi-object filtering," IEEE Trans. Signal Processing, Vol. 56, No. 8 Part 1, pp. 3447--3457, 2008.
     # http://ba-ngu.vo-au.com/vo/SVV08_OSPA.pdf
-    # ---BibTeX entry
+    # BibTeX entry:
     # @ARTICLE{OSPA,
     # author={D. Schuhmacher and B.-T. Vo and B.-N. Vo},
     # journal={IEEE Transactions on Signal Processing},

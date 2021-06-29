@@ -1,3 +1,15 @@
+# -*- coding: utf-8 -*-
+# File: generate_model.py                                                      #
+# Project: Multi-object Filters                                                #
+# File Created: Monday, 7th June 2021 9:16:17 am                               #
+# Author: Flávio Eler De Melo                                                  #
+# -----                                                                        #
+# This is a script to set the multi-object filter model parameters.            #
+# -----                                                                        #
+# Last Modified: Tuesday, 29th June 2021 12:26:40 pm                           #
+# Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                    #
+# -----                                                                        #
+# License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)    #
 import numpy as np
 import scipy as sp
 
@@ -22,7 +34,7 @@ class Model(object):
         self.G = np.linalg.cholesky(self.Q)
         
         # Survival process parameters
-        self.p_s = 0.98
+        self.p_s = 0.99
         self.q_s = 1.0 - self.p_s
        
         # Default birth process parameters (Poisson process, multiple Gaussian components)

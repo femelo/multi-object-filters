@@ -1,3 +1,28 @@
+# -*- coding: utf-8 -*-
+# File: dg_filter.py                                                                                         #
+# Project: Multi-object Filters                                                                              #
+# File Created: Thursday, 10th June 2021 9:05:30 am                                                          #
+# Author: Flávio Eler De Melo                                                                                #
+# -----                                                                                                      #
+# This package/module implements the Discrete Gamma filter with labels as proposed in:                       #
+#                                                                                                            #
+# F. E. De Melo and S. Maskell, "A CPHD approximation based on a discrete-Gamma cardinality model,"          #
+# IEEE Trans Signal Processing, Vol. 67, No. 2, pp. 336-350, 15 Jan.15, 2019.                                #
+#                                                                                                            #
+# BibTeX entry:                                                                                              #     
+# @ARTICLE{DG2019,                                                                                           #
+#  author={De Melo, Flávio Eler and Maskell, Simon},                                                         #
+#  journal={IEEE Transactions on Signal Processing},                                                         #
+#  title={A CPHD Approximation Based on a Discrete-Gamma Cardinality Model},                                 #
+#  year={2019},                                                                                              #
+#  volume={67},                                                                                              #
+#  number={2},                                                                                               #
+#  pages={336-350}}                                                                                          #
+# -----                                                                                                      #
+# Last Modified: Tuesday, 29th June 2021 1:31:21 pm                                                          #
+# Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                                                  #
+# -----                                                                                                      #
+# License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)                                  #
 import numpy as np
 from numpy.lib.arraysetops import unique
 from copy import deepcopy
@@ -37,7 +62,7 @@ class DGFilter(object):
 
         # Filter parameters
         self.max_num_of_components = 300 # limit on number of Gaussians
-        self.prune_threshold = 1e-6 # pruning threshold
+        self.prune_threshold = 1e-5 # pruning threshold
         self.merge_threshold = 4    # merging threshold
 
         # Specific to the CPHD
@@ -281,7 +306,7 @@ class DGFilter(object):
             # Display diagnostics
             if self.print_flag:
                 cprint(
-                    ('k = {:03d}, int = {:06.2f}, crd = {:06.2f}, var = {:06.2f}, ' + 
+                    ('k = {:03d}, int = {:08.5f}, crd = {:08.5f}, var = {:08.5f}, ' + 
                     'comp. updated = {:04d}, comp. pruned = {:04d}, comp. capped = {:04d}')
                         .format(
                             k, self.mu[k], self.N[k], self.var[k],

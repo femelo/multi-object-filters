@@ -1,7 +1,32 @@
+# -*- coding: utf-8 -*-
+# File: phd_filter.py                                                                                        #
+# Project: Multi-object Filters                                                                              #
+# File Created: Monday, 7th June 2021 9:16:17 am                                                             #
+# Author: Flávio Eler De Melo                                                                                #
+# -----                                                                                                      #
+# This package/module implements the Gaussian mixture PHD filter as proposed in:                             #
+#                                                                                                            #
+# B.-N. Vo, and W. K. Ma, "The Gaussian mixture Probability Hypothesis Density Filter,"                      #
+# IEEE Trans Signal Processing, Vol. 54, No. 11, pp. 4091-4104, 2006.                                        #
+#                                                                                                            #
+# BibTeX entry:                                                                                              #
+# @ARTICLE{PHD2006,                                                                                          #
+#  author={B.-N. Vo and W.-K. Ma},                                                                           #
+#  journal={IEEE Transactions on Signal Processing},                                                         #
+#  title={The Gaussian Mixture Probability Hypothesis Density Filter},                                       #
+#  year={2006},                                                                                              #
+#  month={Nov},                                                                                              #
+#  volume={54},                                                                                              #
+#  number={11},                                                                                              #
+#  pages={4091-4104}}                                                                                        # 
+# -----                                                                                                      #
+# Last Modified: Tuesday, 29th June 2021 1:41:10 pm                                                          #
+# Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                                                  #
+# -----                                                                                                      #
+# License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)                                  #
 import numpy as np
 from scipy.stats import chi2
 from time import perf_counter
-from copy import copy
 from termcolor import cprint
 from dependencies.kalman_predict_multiple import kalman_predict_multiple
 from dependencies.gate_measurements import gate_measurements
@@ -28,7 +53,7 @@ class PHDFilter(object):
 
         # Filter parameters
         self.max_num_of_components = 300 # limit on number of Gaussians
-        self.prune_threshold = 1e-6 # pruning threshold
+        self.prune_threshold = 1e-5 # pruning threshold
         self.merge_threshold = 4    # merging threshold
 
         self.p_g = 0.99                              # gate size in percentage
@@ -138,7 +163,7 @@ class PHDFilter(object):
             # Display diagnostics
             if self.print_flag:
                 cprint(
-                    ('k = {:03d}, int = {:06.2f}, crd = {:06.2f}, var = {:06.2f}, ' + 
+                    ('k = {:03d}, int = {:08.5f}, crd = {:08.5f}, var = {:08.5f}, ' + 
                     'comp. updated = {:04d}, comp. pruned = {:04d}, comp. merged = {:04d}')
                         .format(
                             k, self.mu[k], self.N[k], self.var[k],

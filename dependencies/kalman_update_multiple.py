@@ -1,3 +1,16 @@
+# -*- coding: utf-8 -*-
+# File: kalman_update_multiple.py                                              #
+# Project: Multi-object Filters                                                #
+# File Created: Monday, 7th June 2021 9:16:17 am                               #
+# Author: Flávio Eler De Melo                                                  #
+# -----                                                                        #
+# This package/module implements the Kalman filter update for multiple         #
+# Gaussian mixture components.                                                 #
+# -----                                                                        #
+# Last Modified: Tuesday, 29th June 2021 12:14:16 pm                           #
+# Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                    #
+# -----                                                                        #
+# License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)    #
 import numpy as np
 import scipy as sp
 
@@ -43,3 +56,23 @@ def kalman_update_multiple(z, m, P, model, log_likelihood=False):
         P_upd[:, :, i] = P_i
 
     return q_z_upd, m_upd, P_upd
+
+def kalman_update_multiple_with_labels(z, m, P, labels, model, log_likelihood=False):
+    p_len = m.shape[1]
+    z_len = z.shape[1]
+
+    q_z_upd = np.zeros((p_len, z_len))
+    m_upd = np.zeros((model.n_x, p_len, z_len))
+    P_upd = np.zeros((model.n_x, model.n_x, p_len))
+    l_upd = np.zeros((p_len, z_len))
+
+    for i in range(p_len):
+        q_z_i, m_i, P_i = kalman_update_single(
+            z, m[:, i], P[:, :, i], model.H, model.R,
+            log_likelihood)
+        q_z_upd[i, :] = q_z_i
+        m_upd[:, i, :] = m_i
+        P_upd[:, :, i] = P_i
+        l_upd[i, :] = labels[i]
+
+    return q_z_upd, m_upd, P_upd, l_upd

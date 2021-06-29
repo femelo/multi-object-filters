@@ -1,8 +1,33 @@
+# -*- coding: utf-8 -*-
+# File: cphd_filter.py                                                                                       #
+# Project: Multi-object Filters                                                                              #
+# File Created: Tuesday, 8th June 2021 5:35:34 pm                                                            #
+# Author: Flávio Eler De Melo                                                                                #
+# -----                                                                                                      #
+# This package/module implements the Cardinalized PHD filter as proposed in:                                 #
+#                                                                                                            #
+# B.-T. Vo, B.-N. Vo and A. Cantoni, "Analytic implementations of the Cardinalized Probability Hypothesis    #
+# Density Filter," IEEE Trans Signal Processing, Vol. 55, No. 7, part 2, pp. 3553-3567, 2007.                #
+#                                                                                                            #
+# BibTeX entry:                                                                                              #
+# @ARTICLE{CPHD2007,                                                                                         #
+#  author={B.-T. Vo and B.-N. Vo and A. Cantoni},                                                            #
+#  journal={IEEE Transactions on Signal Processing},                                                         #
+#  title={Analytic Implementations of the Cardinalized Probability Hypothesis Density Filter},               #
+#  year={2007},                                                                                              #
+#  month={July},                                                                                             #
+#  volume={55},                                                                                              #
+#  number={7},                                                                                               #
+#  pages={3553-3567}}                                                                                        # 
+# -----                                                                                                      #
+# Last Modified: Tuesday, 29th June 2021 1:47:38 pm                                                          #
+# Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                                                  #
+# -----                                                                                                      #
+# License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)                                  #
 
 import numpy as np
 from scipy.stats import chi2
 from time import perf_counter
-from copy import copy
 from termcolor import cprint
 from dependencies.kalman_predict_multiple import kalman_predict_multiple
 from dependencies.gate_measurements import gate_measurements
@@ -34,7 +59,7 @@ class CPHDFilter(object):
 
         # Filter parameters
         self.max_num_of_components = 300 # limit on number of Gaussians
-        self.prune_threshold = 1e-6 # pruning threshold
+        self.prune_threshold = 1e-5 # pruning threshold
         self.merge_threshold = 4    # merging threshold
 
         # Specific to the CPHD
@@ -261,7 +286,7 @@ class CPHDFilter(object):
             # Display diagnostics
             if self.print_flag:
                 cprint(
-                    ('k = {:03d}, int = {:06.2f}, crd = {:06.2f}, var = {:06.2f}, ' + 
+                    ('k = {:03d}, int = {:08.5f}, crd = {:08.5f}, var = {:08.5f}, ' + 
                     'comp. updated = {:04d}, comp. pruned = {:04d}, comp. merged = {:04d}')
                         .format(
                             k, self.mu[k], self.N[k], self.var[k],

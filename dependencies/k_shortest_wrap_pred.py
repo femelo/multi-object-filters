@@ -1,3 +1,15 @@
+# -*- coding: utf-8 -*-
+# File: k_shortest_wrap_pred.py                                                                              #
+# Project: Multi-object Filters                                                                              #
+# File Created: Monday, 7th June 2021 9:16:17 am                                                             #
+# Author: Flávio Eler De Melo                                                                                #
+# -----                                                                                                      #
+# This package/module implements just the wrapper for the k-shortest path algorithm.                         #
+# -----                                                                                                      #
+# Last Modified: Tuesday, 29th June 2021 2:24:45 pm                                                          #
+# Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                                                  #
+# -----                                                                                                      #
+# License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)                                  #
 import numpy as np
 from dependencies.k_shortest_path_any import k_shortest_path_any
 

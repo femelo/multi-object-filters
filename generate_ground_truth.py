@@ -1,3 +1,15 @@
+# -*- coding: utf-8 -*-
+# File: generate_ground_truth.py                                               #
+# Project: Multi-object Filters                                                #
+# File Created: Monday, 7th June 2021 9:16:17 am                               #
+# Author: Flávio Eler De Melo                                                  #
+# -----                                                                        #
+# This is a script to generate ground truth for the demo script.               #
+# -----                                                                        #
+# Last Modified: Tuesday, 29th June 2021 12:25:26 pm                           #
+# Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                    #
+# -----                                                                        #
+# License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)    #
 import numpy as np
 from scipy.stats import norm
 
@@ -32,6 +44,9 @@ def propagate_state(X_km1, model, with_noise=False):
 
     return model.F.dot(X_km1) + noise
 
+def local_round(x):
+    i, f = divmod(x, 1)
+    return int(i + ((f >= 0.5) if (x > 0) else (f > 0.5)))
 
 def generate_ground_truth(model):
     # Instantiate ground truth
@@ -53,9 +68,9 @@ def generate_ground_truth(model):
     bounds = np.array([800, 5, 800, 5])
 
     N = model.num_of_targets
-    N_0 = round(N / 4)
-    N_1 = round(N / 2) - N_0
-    N_2 = round(3 * N / 4) - (N_0 + N_1)
+    N_0 = local_round(N / 4)
+    N_1 = local_round(N / 2) - N_0
+    N_2 = local_round(3 * N / 4) - (N_0 + N_1)
     N_3 = N - (N_0 + N_1 + N_2)
 
     x_start = np.zeros((model.n_x, N + 5))

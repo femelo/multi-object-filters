@@ -1,14 +1,45 @@
+# -*- coding: utf-8 -*-
+# File: glmb_filter.py                                                                                       #
+# Project: Multi-object Filters                                                                              #
+# File Created: Wednesday, 9th June 2021 10:46:25 am                                                         #
+# Author: Flávio Eler De Melo                                                                                #
+# -----                                                                                                      #
+# This package/module implements the Generalized Labeled Multi-Bernoulli filter as proposed in:              #
+#                                                                                                            #
+# B.-N. Vo, B.-T. Vo, and D. Phung, "Labeled Random Finite Sets and the Bayes Multi-Target Tracking Filter," #
+# IEEE Trans Signal Processing, Vol. 62, No. 24, pp. 6554-6567, 2014.                                        #
+#                                                                                                            #
+# BibTeX entry:                                                                                              #
+# @ARTICLE{GLMB2014,                                                                                         #
+#  author={B.-T. Vo and B.-N. Vo and D. Phung},                                                              #
+#  journal={IEEE Transactions on Signal Processing},                                                         #
+#  title={Labeled Random Finite Sets and the Bayes Multi-Target Tracking Filter},                            #
+#  year={2014},                                                                                              #
+#  month={Dec},                                                                                              #
+#  volume={62},                                                                                              #
+#  number={24},                                                                                              #
+#  pages={6554-6567}}                                                                                        # 
+#                                                                                                            # 
+# Note 1: no lookahead PHD/CPHD allocation is implemented in this code, a simple proportional weighting      #
+# scheme is used for readability.                                                                            #
+# Note 2: the simple example used here is the same as in the CB-MeMBer filter code for a quick demonstration #
+# and comparison purposes.                                                                                   #
+# Note 3: more difficult scenarios require more components/hypotheses (thus exec time) and/or a better       #
+# lookahead.                                                                                                 #
+# -----                                                                                                      #
+# Last Modified: Tuesday, 29th June 2021 1:52:42 pm                                                          #
+# Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                                                  #
+# -----                                                                                                      #
+# License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)                                  #
 import numpy as np
-from numpy.lib.arraysetops import unique
 from scipy.stats import chi2
 from time import perf_counter
-from copy import copy, deepcopy
+from copy import deepcopy
 from termcolor import cprint
 from dependencies.kalman_predict_multiple import kalman_predict_multiple
 from dependencies.gate_measurements import gate_measurements
 from dependencies.kalman_update_multiple import kalman_update_multiple
-from dependencies.gm_management import gm_prune, gm_merge, gm_cap
-from dependencies.k_shortest_wrap_pred import k_shortest_wrap_pred
+from dependencies.k_shortest_path_any import k_shortest_wrap_pred
 from dependencies.m_best_assignment_update import m_best_assignment_update
 from dependencies.log_sum_exp import log_sum_exp
 
@@ -114,7 +145,7 @@ class GLMBFilter(object):
         self.hyp_threshold = 1e-15       # pruning threshold for components/hypotheses
 
         self.max_num_of_components = 300 # limit on number of Gaussians
-        self.prune_threshold = 1e-6      # pruning threshold
+        self.prune_threshold = 1e-5      # pruning threshold
         self.merge_threshold = 4         # merging threshold
 
         self.p_g = 0.99                              # gate size in percentage
@@ -157,11 +188,6 @@ class GLMBFilter(object):
         # Initialize parameters
         p_update = GLMBProcess()
         p_predict = GLMBProcess()
-
-        prd_time = self.prd_time
-        gat_time = self.gat_time
-        upd_time = self.upd_time
-        mgm_time = self.mgm_time
         model = self.model
 
         # Run recursion
@@ -170,7 +196,7 @@ class GLMBFilter(object):
             t_start = perf_counter()
             p_predict.copy(p_update)
             self.predict(p_predict, k)
-            prd_time += perf_counter() - t_start
+            self.prd_time += perf_counter() - t_start
 
             # Gating
             t_start = perf_counter()
@@ -183,14 +209,14 @@ class GLMBFilter(object):
                 Z_k, _ = gate_measurements(measurement_set.Z[k], self.gamma, model, m_tracks, P_tracks)
             else:
                 Z_k = measurement_set.Z[k]
-            gat_time += perf_counter() - t_start
+            self.gat_time += perf_counter() - t_start
 
             # Update
             t_start = perf_counter()
             p_update.copy(p_predict)
             self.update(p_update, Z_k, k)
             L_updated = len(p_update.w)
-            upd_time += perf_counter() - t_start
+            self.upd_time += perf_counter() - t_start
             
             # Gaussian mixture management
             t_start = perf_counter()
@@ -198,7 +224,7 @@ class GLMBFilter(object):
             L_pruned = L_updated - len(p_update.w)
             self.cap(p_update)
             L_capped = L_updated + L_pruned - len(p_update.w)
-            mgm_time += perf_counter() - t_start
+            self.mgm_time += perf_counter() - t_start
 
             # Estimates extraction
             self.extract_estimates(p_update, k)
@@ -206,7 +232,7 @@ class GLMBFilter(object):
             # Display diagnostics
             if self.print_flag:
                 cprint(
-                    ('k = {:03d}, int = {:06.2f}, crd = {:06.2f}, var = {:06.2f}, ' + 
+                    ('k = {:03d}, int = {:08.5f}, crd = {:08.5f}, var = {:08.5f}, ' + 
                     'comp. updated = {:04d}, comp. pruned = {:04d}, comp. capped = {:04d}')
                         .format(
                             k, self.mu[k], self.N[k], self.var[k],
@@ -219,7 +245,7 @@ class GLMBFilter(object):
         # then best component/hypothesis given best cardinality,
         # then best means of tracks given best component/hypothesis and cardinality
         cdn_mean = np.dot(np.arange(len(p_update.cdn)), p_update.cdn)
-        self.mu[k] = np.sum(cdn_mean)
+        self.mu[k] = cdn_mean
         self.var[k] = np.dot(np.arange(len(p_update.cdn))**2, p_update.cdn) - cdn_mean ** 2
         N_k = np.argmax(p_update.cdn)
         m_est = np.zeros((model.n_x, N_k))
@@ -247,7 +273,8 @@ class GLMBFilter(object):
         if len(I) == 0:
             h = '*'
         else:
-            h = '*'.join([str(item) for item in I])
+            h = '*'.join([str(item + 1) for item in sorted(I)])
+            h += '*'
         return h
 
     def clean_prediction(self, p_predict):

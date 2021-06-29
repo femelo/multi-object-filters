@@ -1,4 +1,37 @@
+# -*- coding: utf-8 -*-
+# File: set_birth_model.py                                                     #
+# Project: Multi-object Filters                                                #
+# File Created: Monday, 7th June 2021 9:16:17 am                               #
+# Author: Flávio Eler De Melo                                                  #
+# -----                                                                        #
+# This package/module implements a simple method for setting the birth model   #
+# based on non-validated measurements.                                         #
+# -----                                                                        #
+# Last Modified: Tuesday, 29th June 2021 12:18:11 pm                           #
+# Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                    #
+# -----                                                                        #
+# License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)    #
 import numpy as np
+
+def set_birth_labels(labels, L_birth):
+    # This method can be used to reutilize labels that are not assigned to any object anymore
+    if len(labels) == 0:
+        label_max = 0
+        avail_labels = np.array([])
+        L_avail = 0
+    else:
+        label_max = max(labels)
+        avail_labels = np.array(list(set(range(1, label_max + 1)) - set(labels)), dtype=int)
+        L_avail = len(avail_labels)
+
+    if L_avail >= L_birth:
+        l_birth = avail_labels[:L_birth]
+    else:
+        if len(avail_labels) > 0:
+            l_birth = np.hstack([avail_labels, np.arange(L_birth - L_avail) + label_max + 1])
+        else:
+            l_birth = np.arange(L_birth - L_avail) + label_max + 1
+    return l_birth
 
 def set_birth_model(model, z_not_gated, labels):
     # Get parameters
@@ -37,23 +70,8 @@ def set_birth_model(model, z_not_gated, labels):
         w_birth[l] = w_birth_base    
 
     # Set new labels
-    # This code section can be used to reutilize labels that are not assigned to any object anymore
-    # if len(labels) == 0:
-    #     label_max = 0
-    #     avail_labels = np.array([])
-    #     L_avail = 0
-    # else:
-    #     label_max = max(labels)
-    #     avail_labels = np.array(list(set(range(1, label_max + 1)) - set(labels)), dtype=int)
-    #     L_avail = len(avail_labels)
-    
-    # if L_avail >= L_birth:
-    #     l_birth = avail_labels[:L_birth]
-    # else:
-    #     if len(avail_labels) > 0:
-    #         l_birth = np.hstack([avail_labels, np.arange(L_birth - L_avail) + label_max + 1])
-    #     else:
-    #         l_birth = np.arange(L_birth - L_avail) + label_max + 1
+    # This method can be used to reutilize labels that are not assigned to any object anymore
+    # l_birth = set_birth_labels(labels, L_birth)
 
     # This assumes any new component is given a global unique label
     label_max = max(labels) if len(labels) > 0 else 0

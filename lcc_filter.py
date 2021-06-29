@@ -1,3 +1,26 @@
+# -*- coding: utf-8 -*-
+# File: lcc_filter.py                                                                                        #
+# Project: Multi-object Filters                                                                              #
+# File Created: Thursday, 10th June 2021 11:04:24 am                                                         #
+# Author: Flávio Eler De Melo                                                                                #
+# -----                                                                                                      #
+# This package/module implements the Linear Complexity Cumulant filter with marks as proposed in:            #
+#                                                                                                            #
+# D. E. Clark and F. E. De Melo, "A Linear-Complexity Second-Order Multi-Object Filter via                   #
+# Factorial Cumulants," Proc. of the 21st International Conference on Information Fusion, 2018, 1250-1259.   #
+#                                                                                                            #
+# BibTeX entry:                                                                                              #
+# @INPROCEEDINGS{LCC2018,                                                                                    #
+#  author={D. E. Clark and F. E. De Melo},                                                                   #
+#  booktitle={FUSION 2018, Proceedings of the 21st International Conference on Information Fusion},          #
+#  title={A Linear-Complexity Second-Order Multi-Object Filter via Factorial Cumulants},                     #
+#  year={2018},                                                                                              #
+#  pages={1250-1259}}                                                                                        #
+# -----                                                                                                      #
+# Last Modified: Tuesday, 29th June 2021 2:05:40 pm                                                          #
+# Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                                                  #
+# -----                                                                                                      #
+# License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)                                  #
 import numpy as np
 from numpy.lib.arraysetops import unique
 from copy import deepcopy
@@ -11,7 +34,6 @@ from dependencies.esf import esf
 from dependencies.kalman_update_multiple_per_component import kalman_update_multiple_per_component
 from dependencies.gm_management import gm_prune_with_labels, gm_cap_with_labels
 from dependencies.set_birth_model import set_birth_model
-from dependencies.log_sum_exp import log_sum_exp
 
 class LCCFilter(object):
     def __init__(self, model):
@@ -33,7 +55,7 @@ class LCCFilter(object):
 
         # Filter parameters
         self.max_num_of_components = 300 # limit on number of Gaussians
-        self.prune_threshold = 1e-6 # pruning threshold
+        self.prune_threshold = 1e-5 # pruning threshold
         self.merge_threshold = 4    # merging threshold
 
         # Specific to the CPHD
@@ -219,7 +241,7 @@ class LCCFilter(object):
             # Display diagnostics
             if self.print_flag:
                 cprint(
-                    ('k = {:03d}, int = {:06.2f}, crd = {:06.2f}, var = {:06.2f}, ' + 
+                    ('k = {:03d}, int = {:08.5f}, crd = {:08.5f}, var = {:08.5f}, ' + 
                     'comp. updated = {:04d}, comp. pruned = {:04d}, comp. capped = {:04d}')
                         .format(
                             k, self.mu[k], self.N[k], self.var[k],
@@ -235,7 +257,7 @@ class LCCFilter(object):
         self.var[k] = c1_update + c2_update
 
         unique_labels = unique(l_update)
-        N_k = round(min(abs(c1_update), len(unique_labels)))
+        N_k = round(min(c1_update, len(unique_labels)))
         idx_comp = np.argsort(-w_update)
         m_est = np.zeros((self.model.n_x, N_k))
         l_est = np.zeros((N_k, ), dtype=int)

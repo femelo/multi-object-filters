@@ -4,10 +4,10 @@ This is a README file for the Python implementation of a set of multiple multi-o
 on point processes (or random finite sets), using Gaussian mixtures, along with a demonstration script to compare the filters. In particular, the following filters have been implemented:
   - Probability Hypothesis Density (PHD) filter
   - Cardinalized PHD (CPHD) filter
-  - Discrete-gamma filter with marks (labels)
+  - Discrete-gamma (DG) filter with marks (labels)
   - Generalized Labeled Multi-Bernoulli (GLMB) filter
   - Joint GLMB (JGLMB) filter (with joint prediction and update steps)
-  - Linear Complexity Cumulant (LCC) filter
+  - Linear Complexity Cumulant (LCC) filter with marks (labels)
 
  The implementation of the PHD, CPHD, GLMB and JGLMB filters are based on the Matlab implementation of those filters made public in [Ba Tuong Vo's web page](http://ba-tuong.vo-au.com/codes.html). The implementation of the CPHD filter has been changed by the owner of this repository to make it more efficient by precomputing many factors necessary in the prediction and update of the cardinality distribution.
 

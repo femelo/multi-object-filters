@@ -12,7 +12,7 @@ on point processes (or random finite sets), using Gaussian mixtures, along with 
  The implementation of the PHD, CPHD, GLMB and JGLMB filters are based on the Matlab implementation of those filters made public in [Ba Tuong Vo's web page](http://ba-tuong.vo-au.com/codes.html). The implementation of the CPHD filter has been changed by the owner of this repository to make it more efficient by precomputing many factors necessary in the prediction and update of the cardinality distribution.
 
 ## Licensing
-This code is licensed by Flávio Eler De Melo under the [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0.html). A copy of the terms and conditions can be found in the [LICENSE.md](LICENSE.md) file.
+This code is licensed by Flávio Eler De Melo under the [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0.html). A copy of the terms and conditions can be found in the [LICENSE](LICENSE) file.
 
 ## Contact
 Please get in touch by messages for addressing doubts or suggestions. If you have found a bug, please open a ticket.

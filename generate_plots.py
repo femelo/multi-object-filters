@@ -27,14 +27,12 @@ LABEL_FONT_SIZE = 4
 LEGEND_FONT_SIZE = 4
 TITLE_FONT_SIZE = 5
 
-
 class TrajectorySet(object):
     def __init__(self):
         self.X = np.array([[]])
         self.t_birth = np.array([])
         self.t_death = np.array([])
         self.num_of_targets = 0
-
 
 def extract_trajectories(target_set):
     assert(target_set.has_labels)
@@ -69,7 +67,6 @@ def extract_trajectories(target_set):
     trajectory_set.num_of_targets = target_set.num_of_tracks
     # Return
     return trajectory_set
-
 
 def plot_tracks(ground_truth, measurement_sets, filters, model, save_figure=True):
 
@@ -172,7 +169,6 @@ def plot_tracks(ground_truth, measurement_sets, filters, model, save_figure=True
     plt.close()
     return
 
-
 def plot_cardinality_performance(ground_truth, filters, save_figure=True):
     n_f = len(filters)
     # Cardinality performance
@@ -242,7 +238,6 @@ def plot_cardinality_performance(ground_truth, filters, save_figure=True):
 
     plt.close()
 
-
 def plot_ospa_performance(ground_truth, filters, save_figure=True):
     n_f = len(filters)
     time_steps = np.arange(ground_truth.K)
@@ -295,8 +290,6 @@ def plot_ospa_performance(ground_truth, filters, save_figure=True):
     plt.close()
 
 # Main function
-
-
 def generate_plots(ground_truth, measurement_sets, filters, model, save_figure=True):
     # Check if the figures directory exists, if not creates it
     if not os.path.isdir(FIGURES_PATH):

@@ -1,0 +1,6 @@
+###### Requirements ######`
+numpy
+scipy
+termcolor
+argparse
+munkres >= 1.0.12

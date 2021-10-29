@@ -35,6 +35,7 @@ from dg_filter import DGFilter
 from glmb_filter import GLMBFilter
 from joint_glmb_filter import JointGLMBFilter
 from lcc_filter import LCCFilter
+from lccm_filter import LCCFilterWithMarks
 
 # Declare result class
 class Result(object):
@@ -61,7 +62,8 @@ TRACKER_ID_MAP = {
     3: 'DG',
     4: 'GLMB',
     5: 'JGLMB',
-    6: 'LCC'
+    6: 'LCC',
+    7: 'LCCM'
 }
 TRACKER_ID_REVERSE_MAP = {
     'PHD': 1,
@@ -69,7 +71,8 @@ TRACKER_ID_REVERSE_MAP = {
     'DG': 3,
     'GLMB': 4,
     'JGLMB': 5,
-    'LCC': 6
+    'LCC': 6,
+    'LCCM': 7
 }
 
 # Run tracker for a given scenario
@@ -87,8 +90,10 @@ def run_trackers(run_id, tracker_ids, model, truth, c = 100.0, p = 1, print_flag
             tracker = GLMBFilter(model)
         elif tracker_id == 5:
             tracker = JointGLMBFilter(model)
-        else:
+        elif tracker_id == 6:
             tracker = LCCFilter(model)
+        else:
+            tracker = LCCFilterWithMarks(model)
 
         # Run
         start_time = perf_counter()
@@ -125,10 +130,10 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-f', '--filters',
         metavar='<list of filters>',
-        default=['phd', 'cphd', 'dg'],
+        default=['phd', 'cphd', 'lcc'],
         nargs='+',
         type=str,
-        help='List of filters to run from: phd, cphd, dg, glmb, jglmb, lcc (default: phd cphd dg)')
+        help='List of filters to run from: phd, cphd, dg, glmb, jglmb, lcc, lccm (default: phd cphd lcc)')
     argparser.add_argument(
         '-r', '--runs',
         metavar='<number of Monte Carlo runs>',
@@ -193,6 +198,7 @@ if __name__ == "__main__":
     # 4: GLMB
     # 5: JGLMB
     # 6: LCC
+    # 7: LCCM
     tracker_ids = [TRACKER_ID_REVERSE_MAP[f.upper()] for f in args.filters 
         if f.upper() in TRACKER_ID_REVERSE_MAP.keys()]
     if len(tracker_ids) == 0:

@@ -59,7 +59,6 @@ def set_birth_model(model, z_not_gated, labels):
     B_birth_base = np.linalg.cholesky(P_birth_base)
     if L_birth > 0:
         w_birth_base = mu_birth / L_birth
-        # w_birth_base = mu_birth / model.num_of_targets
     else:
         w_birth_base = 0.0
 

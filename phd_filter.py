@@ -153,7 +153,7 @@ class PHDFilter(object):
             gm_prune(w_update, m_update, P_update, self.prune_threshold)
             L_pruned = L_updated - len(w_update)
             gm_merge(w_update, m_update, P_update, self.merge_threshold)
-            L_merged = L_updated + L_pruned - len(w_update)
+            L_merged = L_updated - L_pruned - len(w_update)
             gm_cap(w_update, m_update, P_update, self.max_num_of_components)
             self.mgm_time += (perf_counter() - t_start)
 

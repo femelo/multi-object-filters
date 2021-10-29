@@ -206,7 +206,7 @@ class JointGLMBFilter(object):
             self.prune(p_update)
             L_pruned = L_updated - len(p_update.w)
             self.cap(p_update)
-            L_capped = L_updated + L_pruned - len(p_update.w)
+            L_capped = L_updated - L_pruned - len(p_update.w)
             self.mgm_time += perf_counter() - t_start
 
             # Estimates extraction

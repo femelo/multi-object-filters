@@ -123,8 +123,8 @@ def gm_cap(w, x, P, max_number):
         P.resize(P_new.shape, refcheck=False)
 
         w[:] = w_new * ( sum_w / np.sum(w_new) )
-        x[:] = x[:, idx]
-        P[:] = P[:, :, idx]
+        x[:] = x_new
+        P[:] = P_new
 
 # Prune GM components with labels
 def gm_prune_with_labels(w, x, P, l, threshold):
@@ -199,7 +199,7 @@ def gm_merge_with_labels(w, x, P, l, threshold):
             P_bar = np.zeros((n_x, n_x))
             for i in I_:
                 x_bar += w_[i] * x_[:, i]
-                P_x_x += w_[i] * np.outer(x[:, i], x[:, i])
+                P_x_x += w_[i] * np.outer(x_[:, i], x_[:, i])
                 P_bar += w_[i] * P_[:, :, i]
             x_bar /= sum_w
             P_x_x /= sum_w
@@ -212,6 +212,7 @@ def gm_merge_with_labels(w, x, P, l, threshold):
             l_new[k] = lbl
             
             I = np.array(list(set(I) - set(I_)))
+            w_[I_] = -1.0
             k += 1
     
     valid_idx = np.logical_not(np.isnan(w_new))

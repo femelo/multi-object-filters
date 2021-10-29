@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # File: lcc_filter.py                                                                                        #
 # Project: Multi-object Filters                                                                              #
-# File Created: Thursday, 10th June 2021 11:04:24 am                                                         #
+# File Created: Thursday, 28th October 2021 09:23:00 am                                                      #
 # Author: Flávio Eler De Melo                                                                                #
 # -----                                                                                                      #
-# This package/module implements the Linear Complexity Cumulant filter with marks as proposed in:            #
+# This package/module implements the Linear Complexity Cumulant filter as proposed in:                       #
 #                                                                                                            #
 # D. E. Clark and F. E. De Melo, "A Linear-Complexity Second-Order Multi-Object Filter via                   #
 # Factorial Cumulants," Proc. of the 21st International Conference on Information Fusion, 2018, 1250-1259.   #
@@ -17,7 +17,7 @@
 #  year={2018},                                                                                              #
 #  pages={1250-1259}}                                                                                        #
 # -----                                                                                                      #
-# Last Modified: Tuesday, 29th June 2021 2:05:40 pm                                                          #
+# Last Modified: Thursday, 28th October 2021 09:23:00 am                                                     #
 # Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                                                  #
 # -----                                                                                                      #
 # License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)                                  #
@@ -32,14 +32,14 @@ from dependencies.kalman_predict_multiple import kalman_predict_multiple
 from dependencies.gate_measurements_per_component import gate_measurements_per_component
 from dependencies.esf import esf
 from dependencies.kalman_update_multiple_per_component import kalman_update_multiple_per_component
-from dependencies.gm_management import gm_prune_with_labels, gm_cap_with_labels
+from dependencies.gm_management import gm_prune, gm_merge, gm_cap
 from dependencies.set_birth_model import set_birth_model
 
 class LCCFilter(object):
     def __init__(self, model):
         # Multi-object filter id
         self.id = 'LCC'
-        self.has_labels = True
+        self.has_labels = False
         # Number of time steps
         self.K = 0
         # Point process model
@@ -100,7 +100,6 @@ class LCCFilter(object):
         w_update = np.array([])
         m_update = np.array([[]])
         P_update = np.array([[[]]])
-        l_update = np.array([], dtype=int)
         model = self.model
 
         # Initial point process cumulants
@@ -112,22 +111,10 @@ class LCCFilter(object):
         mu_c = model.mu_c
         pdf_c = model.pdf_c
         p_d = model.p_d
-        q_d = model.q_d
         p_s = model.p_s
-        q_s = model.q_s
 
-        log_mu_c = np.log(model.mu_c)
-        log_pdf_c = np.log(model.pdf_c)
         log_p_d = np.log(model.p_d)
         log_q_d = np.log(model.q_d)
-        log_p_s = np.log(model.p_s)
-        log_q_s = np.log(model.q_s)
-
-        # Set initial model birth as null
-        model.w_birth = np.array([])
-        model.l_birth = np.array([], dtype=int)
-        model.m_birth = np.array([[]])
-        model.P_birth = np.array([[[]]])
 
         # Run recursion
         for k in range(self.K):
@@ -136,21 +123,16 @@ class LCCFilter(object):
 
             # Intensity prediction
             w_predict = p_s * w_update
-            l_predict = l_update
             m_predict, P_predict = kalman_predict_multiple(model, m_update, P_update)
 
-            if len(w_predict) > 0 and len(model.w_birth) > 0:
+            if len(w_predict) > 0:
                 w_predict = np.hstack([model.w_birth, w_predict])
-                l_predict = np.hstack([model.l_birth, l_predict])
                 m_predict = np.hstack([model.m_birth, m_predict])
                 P_predict = np.dstack([model.P_birth, P_predict])
-            elif len(model.w_birth) > 0:
+            else:
                 w_predict = copy(model.w_birth)
-                l_predict = copy(model.l_birth)
                 m_predict = copy(model.m_birth)
                 P_predict = copy(model.P_birth)
-            else:
-                pass
 
             # Predict cumulants
             c1_predict = np.sum(w_predict)
@@ -193,7 +175,6 @@ class LCCFilter(object):
             # Missed detection term
             log_w_predict = np.log(w_predict)
             log_w_update = log_theta_1 + log_q_d + log_w_predict
-            l_update = copy(l_predict)
             m_update = m_predict
             P_update = P_predict
             c2_missed_detections = np.real(np.sum(np.exp(log_theta_2 + 2*(log_q_d + log_w_predict))))
@@ -207,7 +188,6 @@ class LCCFilter(object):
                     log_w_j -= np.log(mu_c * pdf_c + np.sum(np.exp(log_w_j)))
                     log_w_sq = np.append(log_w_sq, 2.0 * log_w_j, axis=0)
                     log_w_update = np.hstack([log_w_update, log_w_j])
-                    l_update = np.hstack([l_update, l_predict[valid_idx]])
                     m_update = np.hstack([m_update, m_filtered[:, valid_idx, j].reshape(model.n_x, -1)])
                     P_update = np.dstack([P_update, P_filtered[:, :, valid_idx].reshape(model.n_x, model.n_x, -1)])
             w_update = np.zeros(log_w_update.shape)
@@ -223,12 +203,12 @@ class LCCFilter(object):
             
             # Gaussian mixture management
             t_start = perf_counter()
-            gm_prune_with_labels(w_update, m_update, P_update, l_update, self.prune_threshold)
+            gm_prune(w_update, m_update, P_update, self.prune_threshold)
             L_pruned = L_updated - len(w_update)
-            gm_cap_with_labels(w_update, m_update, P_update, l_update, 
-                self.max_num_of_components, round(c1_update))
-            L_capped = L_updated - L_pruned - len(w_update)
-            self.mgm_time += perf_counter() - t_start
+            gm_merge(w_update, m_update, P_update, self.merge_threshold)
+            L_merged = L_updated - L_pruned - len(w_update)
+            gm_cap(w_update, m_update, P_update, self.max_num_of_components)
+            self.mgm_time += (perf_counter() - t_start)
 
             # In case all components where removed, reset cumulants
             if len(w_update) == 0:
@@ -236,41 +216,35 @@ class LCCFilter(object):
                 c2_update = 1.0
 
             # Estimates extraction
-            self.extract_estimates(w_update, m_update, l_update, c1_update, c2_update, k)
+            self.extract_estimates(w_update, m_update, c1_update, c2_update, k)
 
             # Display diagnostics
             if self.print_flag:
                 cprint(
                     ('k = {:03d}, int = {:08.5f}, crd = {:08.5f}, var = {:08.5f}, ' + 
-                    'comp. updated = {:04d}, comp. pruned = {:04d}, comp. capped = {:04d}')
+                    'comp. updated = {:04d}, comp. pruned = {:04d}, comp. merged = {:04d}')
                         .format(
                             k, self.mu[k], self.N[k], self.var[k],
-                            L_updated, L_pruned, L_capped), 
+                            L_updated, L_pruned, L_merged), 
                     'cyan')
-
-            # Compose birth model for next step
-            set_birth_model(model, Z_ng, unique(l_update))
     
-    def extract_estimates(self, w_update, m_update, l_update, c1_update, c2_update, k):
-         # Save point process moments
+    def extract_estimates(self, w_update, m_update, c1_update, c2_update, k):
+        # Save point process moments
         self.mu[k] = c1_update
         self.var[k] = c1_update + c2_update
 
-        unique_labels = unique(l_update)
-        N_k = round(min(c1_update, len(unique_labels)))
-        idx_comp = np.argsort(-w_update)
-        m_est = np.zeros((self.model.n_x, N_k))
-        l_est = np.zeros((N_k, ), dtype=int)
-        i = 0
-        j = 0
-        while np.any(l_est == 0):
-            if not l_update[idx_comp[j]] in l_est:
-                m_est[:, i] = m_update[:, idx_comp[j]]
-                l_est[i] = l_update[idx_comp[j]]
-                i += 1
-            j += 1
-        idx = np.argsort(l_est)
-        self.X[k] = m_est[:, idx]
+        idx = np.where(w_update > 0.5)[0]
+        X_k = np.array([[]])
+        N_k = 0
+        for i in idx:
+            N_i = int(round(w_update[i]))
+            if X_k.shape[1] == 0:
+                if N_i <= 1:
+                    X_k = m_update[:, i, None]
+                else:
+                    X_k = np.hstack(N_i*[m_update[:, i, None]])
+            else:
+                X_k = np.hstack([X_k] + N_i*[m_update[:, i, None]])
+            N_k += N_i
+        self.X[k] = X_k
         self.N[k] = N_k
-        self.labels[k] = l_est[idx]
-        self.label_max = max(l_est.tolist() + [self.label_max])

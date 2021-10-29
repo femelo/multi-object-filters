@@ -1,31 +1,30 @@
 # -*- coding: utf-8 -*-
-# File: dg_filter.py                                                                                         #
+# File: lccm_filter.py                                                                                       #
 # Project: Multi-object Filters                                                                              #
-# File Created: Thursday, 10th June 2021 9:05:30 am                                                          #
+# File Created: Thursday, 10th June 2021 11:04:24 am                                                         #
 # Author: Flávio Eler De Melo                                                                                #
 # -----                                                                                                      #
-# This package/module implements the Discrete Gamma filter with labels as proposed in:                       #
+# This package/module implements the Linear Complexity Cumulant filter with marks based on that proposed in: #
 #                                                                                                            #
-# F. E. De Melo and S. Maskell, "A CPHD approximation based on a discrete-Gamma cardinality model,"          #
-# IEEE Trans Signal Processing, Vol. 67, No. 2, pp. 336-350, 15 Jan.15, 2019.                                #
+# D. E. Clark and F. E. De Melo, "A Linear-Complexity Second-Order Multi-Object Filter via                   #
+# Factorial Cumulants," Proc. of the 21st International Conference on Information Fusion, 2018, 1250-1259.   #
 #                                                                                                            #
-# BibTeX entry:                                                                                              #     
-# @ARTICLE{DG2019,                                                                                           #
-#  author={De Melo, Flávio Eler and Maskell, Simon},                                                         #
-#  journal={IEEE Transactions on Signal Processing},                                                         #
-#  title={A CPHD Approximation Based on a Discrete-Gamma Cardinality Model},                                 #
-#  year={2019},                                                                                              #
-#  volume={67},                                                                                              #
-#  number={2},                                                                                               #
-#  pages={336-350}}                                                                                          #
+# BibTeX entry:                                                                                              #
+# @INPROCEEDINGS{LCC2018,                                                                                    #
+#  author={D. E. Clark and F. E. De Melo},                                                                   #
+#  booktitle={FUSION 2018, Proceedings of the 21st International Conference on Information Fusion},          #
+#  title={A Linear-Complexity Second-Order Multi-Object Filter via Factorial Cumulants},                     #
+#  year={2018},                                                                                              #
+#  pages={1250-1259}}                                                                                        #
 # -----                                                                                                      #
-# Last Modified: Tuesday, 29th June 2021 1:31:21 pm                                                          #
+# Last Modified: Tuesday, 29th June 2021 2:05:40 pm                                                          #
 # Modified By: Flávio Eler De Melo (flavio.eler@gmail.com>)                                                  #
 # -----                                                                                                      #
 # License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)                                  #
 import numpy as np
 from numpy.lib.arraysetops import unique
 from copy import deepcopy
+from numpy.linalg.linalg import multi_dot
 from scipy.stats import chi2
 from time import perf_counter
 from copy import copy
@@ -34,18 +33,13 @@ from dependencies.kalman_predict_multiple import kalman_predict_multiple
 from dependencies.gate_measurements_per_component import gate_measurements_per_component
 from dependencies.esf import esf
 from dependencies.kalman_update_multiple_per_component import kalman_update_multiple_per_component
-from dependencies.gm_management import gm_prune_with_labels, gm_merge_with_labels, gm_cap_with_labels
+from dependencies.gm_management import gm_merge_with_labels, gm_prune_with_labels, gm_cap_with_labels
 from dependencies.set_birth_model import set_birth_model
-from dependencies.log_sum_exp import log_sum_exp
 
-VAL_MIN = np.spacing(0)
-LOG_VAL_MIN = np.log(VAL_MIN)
-REAL_MIN = 2.0 ** -1022.0
-
-class DGFilter(object):
-    def __init__(self, model, merge_components=False):
+class LCCFilterWithMarks(object):
+    def __init__(self, model, merge_components=True):
         # Multi-object filter id
-        self.id = 'DG'
+        self.id = 'LCCM'
         self.has_labels = True
         self.merge_components = merge_components
         # Number of time steps
@@ -111,25 +105,25 @@ class DGFilter(object):
         l_update = np.array([], dtype=int)
         model = self.model
 
-        # Initial point process parameters
-        a_update = 0.0
-        b_update = 1.0
-        mu_update = a_update / b_update
+        # Initial point process cumulants
+        c1_update = 0.0
+        c2_update = 1.0
+        c1_clutter = model.mu_c
+        c2_clutter = model.mu_c - model.var_c
 
         mu_c = model.mu_c
-        q_d = model.q_d
+        pdf_c = model.pdf_c
+        p_d = model.p_d
         p_s = model.p_s
 
-        log_mu_c = np.log(model.mu_c)
-        log_pdf_c = np.log(model.pdf_c)
         log_p_d = np.log(model.p_d)
         log_q_d = np.log(model.q_d)
 
         # Set initial model birth as null
         model.w_birth = np.array([])
-        model.l_birth = np.array([], dtype=int)
+        model.l_birth= np.array([], dtype=int)
         model.m_birth = np.array([[]])
-        model.P_birth = np.array([[[]]])
+        model.P_birth = np.array([[[]]]) 
 
         # Run recursion
         for k in range(self.K):
@@ -154,19 +148,14 @@ class DGFilter(object):
             else:
                 pass
 
-            # Cardinality prediction 
-            # Predicted number of targets
-            mu_predict = np.sum(model.w_birth) + p_s * a_update / b_update
-            # Predicted variance on number of targets
-            var_predict = mu_predict + (p_s ** 2) * mu_update * (1.0 / b_update - 1.0)
+            # Predict cumulants
+            c1_predict = np.sum(w_predict)
+            c2_predict = p_s ** 2 * c2_update
         
-            # Predict parameters
-            if mu_predict == 0.0 and var_predict == 0.0:
-                a_predict = VAL_MIN
-                b_predict = 1.0
-            else:
-                a_predict = (mu_predict ** 2) / var_predict
-                b_predict = mu_predict / var_predict
+            # Calculate prior process parameters
+            alpha_predict = (p_d * c1_predict + mu_c) ** 2 / (c2_predict + c2_clutter)
+            beta_predict = alpha_predict
+
             self.prd_time += perf_counter() - t_start
 
             # Gating
@@ -192,98 +181,38 @@ class DGFilter(object):
                         log_likelihood=True)
 
             # Pre-calculation of factors
-            log_w_predict = np.log(w_predict)
-            log_factor_pred = np.log(np.complex(a_predict + VAL_MIN)) - np.log(np.complex(b_predict))
-            factor_pred = a_predict / b_predict
-            xi_vals = np.zeros((m, ))
-            for j in range(m):
-                log_q_z_j = copy(log_q_z[:, j])
-                log_q_z_j[np.isnan(log_q_z_j)] = LOG_VAL_MIN
-                xi_vals[j] = np.exp(log_p_d + log_sum_exp(log_q_z_j + log_w_predict) - log_pdf_c) + VAL_MIN
+            log_num = np.log(np.complex(alpha_predict + m))
+            log_den = np.log(np.complex(beta_predict + p_d * c1_predict + mu_c))
+            log_theta_1 = log_num - log_den
+            log_theta_2 = log_theta_1 - log_den
             
-            # Obtain log of elementary symmetric functions
-            v = xi_vals / (factor_pred * mu_c)
-            log_e_s = np.log(esf(v) + VAL_MIN)
-
-            # Compute polynomial terms used to calculate coefficients
-            log_Theta = self.compute_theta(m + 2, q_d, a_predict, b_predict, mu_predict)
-            
-            # Compute coefficients
-            # Indexes
-            u_00 = np.arange(m + 1).astype(int)
-            u_11 = u_00 + 1
-            u_22 = u_00 + 2
-
-            log_terms_num_q = log_Theta[u_11] + log_e_s
-            log_terms_den_q = log_Theta[u_00] + log_e_s
-            log_sum_terms_den_q = log_sum_exp(log_terms_den_q)
-            
-            log_L_q = log_sum_exp(log_terms_num_q) - log_sum_terms_den_q
-
-            # Coefficients for computing cardinality moments
-            log_0_m = np.log(np.arange(m + 1).astype(float) + VAL_MIN)
-            log_terms_num_p = log_0_m + log_terms_den_q
-            log_l_p =  log_sum_exp(log_terms_num_p) - log_sum_terms_den_q
-            
-            log_terms_num_r = 2 * log_0_m + log_terms_den_q
-            log_l_r =  log_sum_exp(log_terms_num_r) - log_sum_terms_den_q
-            
-            log_terms_num_q2 = log_0_m + log_terms_num_q
-            log_l_q = log_sum_exp(log_terms_num_q2) - log_sum_terms_den_q
-            
-            log_terms_num_s = log_Theta[u_22] + log_e_s
-            log_l_s = log_sum_exp(log_terms_num_s) - log_sum_terms_den_q
-
-            log_L_p = np.zeros((m, 1)) + LOG_VAL_MIN
-            u_10 = np.arange(m).astype(int) + 1
-            if m > 1:
-                for j in range(m):
-                    inds = np.array([i for i in range(j)] + [i for i in range(j + 1, m)], dtype=int)
-                    v = xi_vals[inds] / (factor_pred * mu_c)
-                    log_e_s = np.log(esf(v) + REAL_MIN)
-                    log_terms_num = log_Theta[u_10] + log_e_s
-                    log_L_p[j] = log_sum_exp(log_terms_num) - log_sum_terms_den_q
-            elif m == 1:
-                log_e_s = 0.0
-                log_terms_num = log_Theta[u_10] + log_e_s
-                log_L_p[0] = log_terms_num - log_sum_terms_den_q
-            else:
-                pass
-
             # Missed detection term
-            if len(l_predict) > 0:
-                log_w_update = log_L_q - log_factor_pred + log_q_d + log_w_predict
-            else:
-                log_w_update = np.array([])
+            log_w_predict = np.log(w_predict)
+            log_w_update = log_theta_1 + log_q_d + log_w_predict
             l_update = copy(l_predict)
             m_update = m_predict
             P_update = P_predict
+            c2_missed_detections = np.real(np.sum(np.exp(log_theta_2 + 2*(log_q_d + log_w_predict))))
             
+            log_w_sq = np.array([])
             if m > 0:
                 # Detection terms (m)
                 for j in range(m):
                     valid_idx = np.isfinite(log_q_z[:, j])
-                    log_w_j = log_L_p[j] - log_factor_pred + log_p_d + log_q_z[valid_idx, j] \
-                        - log_pdf_c - log_mu_c + log_w_predict[valid_idx]
+                    log_w_j = log_p_d + log_w_predict[valid_idx] + log_q_z[valid_idx, j]
+                    log_w_j -= np.log(mu_c * pdf_c + np.sum(np.exp(log_w_j)))
+                    log_w_sq = np.append(log_w_sq, 2.0 * log_w_j, axis=0)
                     log_w_update = np.hstack([log_w_update, log_w_j])
                     l_update = np.hstack([l_update, l_predict[valid_idx]])
                     m_update = np.hstack([m_update, m_filtered[:, valid_idx, j].reshape(model.n_x, -1)])
                     P_update = np.dstack([P_update, P_filtered[:, :, valid_idx].reshape(model.n_x, model.n_x, -1)])
-
             w_update = np.zeros(log_w_update.shape)
             w_update[:] = np.real(np.exp(log_w_update))
 
-            # Cardinality update
-            # Updated number of targets
-            mu_update = np.exp(log_l_p) + np.exp(log_L_q + log_q_d)
-            # Updated variance of number of targets
-            var_update = np.exp(log_l_r) - np.exp(log_l_p) + 2*np.exp(log_l_q + log_q_d) \
-                + np.exp(log_l_s + 2*log_q_d) - mu_update**2 + mu_update
-            var_update = max(var_update, VAL_MIN)
-            
-            # Updated parameters of the discrete gamma distribution
-            a_update = (mu_update ** 2) / var_update
-            b_update = mu_update / var_update
+            # Update cumulants
+            c2_detections = np.sum(np.exp(log_w_sq))
+            c1_update = np.sum(w_update)
+            c2_update = c2_missed_detections - c2_detections
 
             L_updated = len(w_update)
             self.upd_time += perf_counter() - t_start
@@ -298,16 +227,17 @@ class DGFilter(object):
             else:
                 L_merged = 0
             gm_cap_with_labels(w_update, m_update, P_update, l_update, 
-                self.max_num_of_components, round(mu_update))
+                self.max_num_of_components, round(c1_update))
             L_capped = L_updated - L_pruned - L_merged - len(w_update)
             self.mgm_time += perf_counter() - t_start
 
+            # In case all components where removed, reset cumulants
             if len(w_update) == 0:
-                a_update = 0.0
-                b_update = 1.0
+                c1_update = 0.0
+                c2_update = 1.0
 
             # Estimates extraction
-            self.extract_estimates(w_update, m_update, l_update, mu_update, var_update, k)
+            self.extract_estimates(w_update, m_update, l_update, c1_update, c2_update, k)
 
             # Display diagnostics
             if self.print_flag:
@@ -322,13 +252,13 @@ class DGFilter(object):
             # Compose birth model for next step
             set_birth_model(model, Z_ng, unique(l_update))
     
-    def extract_estimates(self, w_update, m_update, l_update, mu_update, var_update, k):
+    def extract_estimates(self, w_update, m_update, l_update, c1_update, c2_update, k):
          # Save point process moments
-        self.mu[k] = mu_update
-        self.var[k] = var_update
+        self.mu[k] = c1_update
+        self.var[k] = c1_update + c2_update
 
         unique_labels = unique(l_update)
-        N_k = round(min(mu_update, len(unique_labels)))
+        N_k = round(min(c1_update, len(unique_labels)))
         idx_comp = np.argsort(-w_update)
         m_est = np.zeros((self.model.n_x, N_k))
         l_est = np.zeros((N_k, ), dtype=int)
@@ -345,47 +275,3 @@ class DGFilter(object):
         self.N[k] = N_k
         self.labels[k] = l_est[idx]
         self.label_max = max(l_est.tolist() + [self.label_max])
-
-    def compute_theta(self, r, s, alpha, beta, N):
-        log_s = np.log(s)
-        log_z = - beta + log_s
-        log_Psi = np.zeros((r + 1,)).astype('float64') + LOG_VAL_MIN
-        
-        # Number of terms to approximate    
-        epsilon = REAL_MIN
-        nu = N
-        if nu > VAL_MIN:
-            for k in range(30):
-                nu -= ( (alpha - 1.0) * np.log(nu) -beta * nu - np.log(epsilon)) / (2*((alpha - 1.0) / nu - beta))
-        else:
-            nu = r
-
-        lb = 1
-        if np.isnan(nu):
-            ub = r
-        else:
-            ub = max(int(np.real(nu)), r)
-        
-        n = np.arange(lb, ub + 1)
-        n_log_z = n * log_z
-        log_n = np.log(n)
-        am1_log_n = (alpha - 1.0) * log_n
-        theta = am1_log_n + n_log_z
-        theta_max = np.max(theta)
-        theta_min = np.min(theta)
-        d_theta = theta - (theta_min + theta_max) / 2
-        
-        log_Psi[0] = log_sum_exp(d_theta)
-        
-        # Loop
-        log_s_j = log_s
-        log_n_j = log_n
-        for j in range(r):
-            log_Psi[j + 1] = log_sum_exp(d_theta + log_n_j - log_s_j)
-            log_n_j = log_n_j + np.log(np.maximum(n - (j + 1), VAL_MIN))
-            log_s_j = log_s_j + log_s
-        
-        # Normalize and return
-        idx_max = np.argmax(np.abs(log_Psi))
-        log_Theta = log_Psi - log_Psi[idx_max]
-        return log_Theta

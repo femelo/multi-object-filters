@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # File: generate_plots.py                                                      #
 # Project: Multi-object Filters                                                #
@@ -14,6 +15,10 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
+import argparse
+from termcolor import cprint
+import pickle5 as pickle
+from result import Result
 
 FIGURES_PATH = 'figures'
 
@@ -297,3 +302,32 @@ def generate_plots(ground_truth, measurement_sets, filters, model, save_figure=T
     plot_tracks(ground_truth, measurement_sets, filters, model, save_figure)
     plot_cardinality_performance(ground_truth, filters, save_figure)
     plot_ospa_performance(ground_truth, filters, save_figure)
+
+if __name__ == "__main__":
+    # Configure parser
+    argparser = argparse.ArgumentParser(
+        description='Generate plots from tracking results using multi-object filters.')
+    argparser.add_argument(
+        'results_file',
+        metavar='<input results file>',
+        type=str,
+        help='Pickle file containing results from a previous run.')
+    # Parse arguments
+    args = argparser.parse_args()
+    results_file = os.path.abspath(os.path.expanduser(args.results_file))
+
+    if not os.path.exists(results_file):
+        cprint('Provided results file does not exist.', 'red')
+        exit()
+
+    # Load file
+    with open(results_file, 'rb') as f:
+        truth, measurement_set_list, performance_results, model = pickle.load(f)
+
+    cprint('Average run times:', 'green')
+    for res in performance_results:
+        cprint('{:<15} : {:08.5f} seconds'.format(res.id + ' filter', res.run_time), 'green')
+    
+    generate_plots(truth, measurement_set_list, performance_results, model, save_figure=True)
+    cprint('Plots saved in folder \'figures/\'.', 'yellow')
+    

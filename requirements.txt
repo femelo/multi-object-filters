@@ -4,3 +4,4 @@ scipy
 termcolor
 argparse
 munkres >= 1.0.12
+pickle5

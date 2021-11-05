@@ -25,6 +25,7 @@ Please get in touch by messages for addressing doubts or suggestions. If you hav
   - Termcolor
   - Argparse
   - Munkres >= 1.0.12
+  - Pickle5
 
 ## Installation
 

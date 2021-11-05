@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # File: demo.py                                                                #
 # Project: Multi-object Filters                                                #
@@ -14,16 +14,19 @@
 # License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)    #
 import sys
 import os
+from datetime import datetime
 import multiprocessing
 from time import perf_counter
 import numpy as np
 from termcolor import cprint, colored
 import argparse
+import pickle5 as pickle 
 
 # Add dependencies folder
 sys.path.append(os.path.abspath('./dependencies'))
 
 # Other imports
+from result import Result, TRACKER_ID_MAP, TRACKER_ID_REVERSE_MAP
 from generate_model import generate_model
 from generate_ground_truth import generate_ground_truth
 from generate_measurements import generate_measurements
@@ -37,43 +40,8 @@ from joint_glmb_filter import JointGLMBFilter
 from lcc_filter import LCCFilter
 from lccm_filter import LCCFilterWithMarks
 
-# Declare result class
-class Result(object):
-    def __init__(self, tracker_id, has_labels=False):
-        self.id = tracker_id
-        self.has_labels = has_labels
-        self.label_max = 0
-        self.n = np.array([])
-        self.var_n = np.array([])
-        self.ospa = np.array([])
-        self.sq_err = np.array([])
-        self.X = {}
-        self.labels = {}
-        self.run_time = 0.0
-        self.prd_time = 0.0
-        self.gat_time = 0.0
-        self.upd_time = 0.0
-        self.mgm_time = 0.0
-
-# Tracker id map
-TRACKER_ID_MAP = {
-    1: 'PHD',
-    2: 'CPHD',
-    3: 'DGM',
-    4: 'GLMB',
-    5: 'JGLMB',
-    6: 'LCC',
-    7: 'LCCM'
-}
-TRACKER_ID_REVERSE_MAP = {
-    'PHD': 1,
-    'CPHD': 2,
-    'DGM': 3,
-    'GLMB': 4,
-    'JGLMB': 5,
-    'LCC': 6,
-    'LCCM': 7
-}
+# Default results folder
+RESULTS_PATH = 'results'
 
 # Run tracker for a given scenario
 def run_trackers(run_id, tracker_ids, model, truth, c = 100.0, p = 1, print_flag=False):
@@ -174,6 +142,17 @@ if __name__ == "__main__":
         default=10,
         type=int,
         help='Clutter rate (default: 10)')
+    argparser.add_argument(
+        '-s', '--save-results',
+        action='store_true',
+        dest='save_flag',
+        help='Save results to a pickle file (it does not plot results if this flag is set)')
+    argparser.add_argument(
+        '-o', '--output-results-file',
+        metavar='<output results file name>',
+        default=''.join(['results-', datetime.now().isoformat(), '.pkl']),
+        type=str,
+        help='Output results file name (default: \'results-[ISO format current timestamp].pkl\')')
     # Parse arguments
     args = argparser.parse_args()
 
@@ -187,6 +166,10 @@ if __name__ == "__main__":
     prob_of_detection = args.probability_of_detection
     clutter_rate = args.clutter_rate
     num_of_time_steps = args.number_of_time_steps
+
+    # Other parameters
+    save_flag = args.save_flag
+    results_file = args.output_results_file
 
     # Run sequences with chosen filters
     # 1: PHD
@@ -297,5 +280,15 @@ if __name__ == "__main__":
     for res in performance_results:
         cprint('{:<15} : {:08.5f} seconds'.format(res.id + ' filter', res.run_time), 'green')
 
-    generate_plots(truth, measurement_set_list, performance_results, model, save_figure=True)
-    cprint('Plots saved in folder \'figures/\'.', 'yellow')
+    if save_flag:
+        # Check if the results directory exists, if not creates it
+        if not os.path.isdir(RESULTS_PATH):
+            os.mkdir(RESULTS_PATH)
+        with open(os.path.join(RESULTS_PATH, results_file), 'wb') as f:
+            pickle.dump( 
+                [truth, measurement_set_list, performance_results, model], f,
+                protocol=5)
+        cprint('Results file saved in folder \'results/\'.', 'yellow')
+    else:
+        generate_plots(truth, measurement_set_list, performance_results, model, save_figure=True)
+        cprint('Plots saved in folder \'figures/\'.', 'yellow')

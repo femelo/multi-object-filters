@@ -31,7 +31,7 @@ from dependencies.ospa_dist import ospa_dist
 from generate_plots import generate_plots
 from phd_filter import PHDFilter
 from cphd_filter import CPHDFilter
-from dg_filter import DGFilter
+from dgm_filter import DGMFilter
 from glmb_filter import GLMBFilter
 from joint_glmb_filter import JointGLMBFilter
 from lcc_filter import LCCFilter
@@ -59,7 +59,7 @@ class Result(object):
 TRACKER_ID_MAP = {
     1: 'PHD',
     2: 'CPHD',
-    3: 'DG',
+    3: 'DGM',
     4: 'GLMB',
     5: 'JGLMB',
     6: 'LCC',
@@ -68,7 +68,7 @@ TRACKER_ID_MAP = {
 TRACKER_ID_REVERSE_MAP = {
     'PHD': 1,
     'CPHD': 2,
-    'DG': 3,
+    'DGM': 3,
     'GLMB': 4,
     'JGLMB': 5,
     'LCC': 6,
@@ -85,7 +85,7 @@ def run_trackers(run_id, tracker_ids, model, truth, c = 100.0, p = 1, print_flag
         elif tracker_id == 2:
             tracker = CPHDFilter(model)
         elif tracker_id == 3:
-            tracker = DGFilter(model)
+            tracker = DGMFilter(model)
         elif tracker_id == 4:
             tracker = GLMBFilter(model)
         elif tracker_id == 5:
@@ -130,10 +130,10 @@ if __name__ == "__main__":
     argparser.add_argument(
         '-f', '--filters',
         metavar='<list of filters>',
-        default=['phd', 'cphd', 'lcc'],
+        default=['lccm', 'cphd', 'lcc'],
         nargs='+',
         type=str,
-        help='List of filters to run from: phd, cphd, dg, glmb, jglmb, lcc, lccm (default: phd cphd lcc)')
+        help='List of filters to run from: phd, cphd, dgm, glmb, jglmb, lcc, lccm (default: phd cphd lcc)')
     argparser.add_argument(
         '-r', '--runs',
         metavar='<number of Monte Carlo runs>',
@@ -177,9 +177,6 @@ if __name__ == "__main__":
     # Parse arguments
     args = argparser.parse_args()
 
-    # Set random seed
-    np.random.seed(1)
-
     # Get execution arguments
     num_of_runs = args.runs
     parallelize = args.parallelize
@@ -194,15 +191,31 @@ if __name__ == "__main__":
     # Run sequences with chosen filters
     # 1: PHD
     # 2: CPHD
-    # 3: DG
+    # 3: DGM
     # 4: GLMB
     # 5: JGLMB
     # 6: LCC
     # 7: LCCM
     tracker_ids = [TRACKER_ID_REVERSE_MAP[f.upper()] for f in args.filters 
         if f.upper() in TRACKER_ID_REVERSE_MAP.keys()]
+
+    # Check validity/format of parameters
     if len(tracker_ids) == 0:
-        raise RuntimeError(colored('No valid filter specified.', 'red'))
+        raise AssertionError(colored('No valid filter specified.', 'red'))
+    if not (isinstance(num_of_time_steps, int) and num_of_time_steps > 10):
+        raise AssertionError(colored('Invalid number of time steps.', 'red'))
+    if not (isinstance(num_of_runs, int) and num_of_runs > 0):
+        raise AssertionError(colored('Invalid number of Monte Carlo runs.', 'red'))
+    if not (isinstance(num_of_targets, int) and num_of_targets > 1):
+        raise AssertionError(colored('Invalid number of targets.', 'red'))
+    if not (isinstance(prob_of_detection, float) and \
+        prob_of_detection > 0.0 and prob_of_detection < 1.0):
+        raise AssertionError(colored('Invalid probability of detection.', 'red'))
+    if not (isinstance(clutter_rate, (int, float)) and clutter_rate > 0):
+        raise AssertionError(colored('Invalid clutter rate.', 'red'))
+
+    # Set random seed
+    np.random.seed(1)
 
     # Generate model
     model = generate_model(num_of_targets, prob_of_detection, clutter_rate, num_of_time_steps)

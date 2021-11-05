@@ -62,7 +62,6 @@ def gm_merge(w, x, P, threshold):
     n = len(w)
     I = np.arange(n)
     k = 0
-
     while len(I) > 0:
         j = np.argmax(w[I])
 
@@ -127,12 +126,14 @@ def gm_cap(w, x, P, max_number):
         P[:] = P_new
 
 # Prune GM components with labels
-def gm_prune_with_labels(w, x, P, l, threshold):
+def gm_prune_with_labels(w, x, P, l, threshold, assoc_hist=None):
     if np.all(w == 0.0):
         w[:] = np.array([])
         l[:] = np.array([], dtype=int)
         x[:] = np.array([[]])
         P[:] = np.array([[[]]])
+        if not assoc_hist is None:
+            assoc_hist[:] = []
         return
     
     idx = w > threshold
@@ -142,6 +143,8 @@ def gm_prune_with_labels(w, x, P, l, threshold):
         l_new = l[idx]
         x_new = x[:, idx]
         P_new = P[:, :, idx]
+        if not assoc_hist is None:
+            assoc_hist_new = [assoc_hist[i] for i, idx_b in enumerate(idx) if idx_b]
 
         sum_w = np.sum(w)
         w.resize(w_new.shape, refcheck=False)
@@ -153,14 +156,18 @@ def gm_prune_with_labels(w, x, P, l, threshold):
         l[:] = l_new
         x[:] = x_new
         P[:] = P_new
+        if not assoc_hist is None:
+            assoc_hist[:] = assoc_hist_new
 
 # Merge GM components with labels
-def gm_merge_with_labels(w, x, P, l, threshold):
+def gm_merge_with_labels(w, x, P, l, threshold, assoc_hist=None):
     if np.all(w == 0.0):
         w[:] = np.array([])
         l[:] = np.array([], dtype=int)
         x[:] = np.array([[]])
         P[:] = np.array([[[]]])
+        if not assoc_hist is None:
+            assoc_hist[:] = []
         return
 
     # State dimension
@@ -171,16 +178,19 @@ def gm_merge_with_labels(w, x, P, l, threshold):
     x_new = np.nan * np.ones(x.shape)
     P_new = np.nan * np.ones(P.shape)
     l_new = np.nan * np.ones(l.shape)
+    if not assoc_hist is None:
+        assoc_hist_new = []
 
     #  Counter
     k = 0
-
     for lbl in list(set(l)):
         idx = l == lbl
         w_ = w[idx]
         l_ = l[idx]
         x_ = x[:, idx]
         P_ = P[:, :, idx]
+        if not assoc_hist is None:
+            assoc_hist_ = [assoc_hist[i] for i, idx_b in enumerate(idx) if idx_b]
 
         I = np.arange(len(l_))
         while len(I) > 0:
@@ -210,6 +220,8 @@ def gm_merge_with_labels(w, x, P, l, threshold):
             x_new[:, k] = x_bar
             P_new[:, :, k]= P_bar + P_x_x - np.outer(x_bar, x_bar)
             l_new[k] = lbl
+            if not assoc_hist is None:
+                assoc_hist_new.append(assoc_hist_[j])
             
             I = np.array(list(set(I) - set(I_)))
             w_[I_] = -1.0
@@ -231,16 +243,19 @@ def gm_merge_with_labels(w, x, P, l, threshold):
     l[:] = l_new
     x[:] = x_new
     P[:] = P_new
-
+    if not assoc_hist is None:
+        assoc_hist[:] = assoc_hist_new
     return
 
 # Cap GM components with labels
-def gm_cap_with_labels(w, x, P, l, max_number, min_number_of_labels):
+def gm_cap_with_labels(w, x, P, l, max_number, min_number_of_labels, assoc_hist=None):
     if np.all(w == 0.0):
         w[:] = np.array([])
         l[:] = np.array([])
         x[:] = np.array([[]])
         P[:] = np.array([[[]]])
+        if not assoc_hist is None:
+            assoc_hist[:] = []
 
     if len(w) > max_number:
         all_indexes = np.argsort(-w)
@@ -255,6 +270,8 @@ def gm_cap_with_labels(w, x, P, l, max_number, min_number_of_labels):
         l_new = copy(l[idx])
         x_new = copy(x[:, idx])
         P_new = copy(P[:, :, idx])
+        if not assoc_hist is None:
+            assoc_hist_new = [assoc_hist[i] for i in idx]
 
         sum_w = np.sum(w)
         w.resize(w_new.shape, refcheck=False)
@@ -266,3 +283,5 @@ def gm_cap_with_labels(w, x, P, l, max_number, min_number_of_labels):
         l[:] = l_new
         x[:] = x_new
         P[:] = P_new
+        if not assoc_hist is None:
+            assoc_hist[:] = assoc_hist_new

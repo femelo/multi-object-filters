@@ -45,7 +45,7 @@ LOG_VAL_MIN = np.log(VAL_MIN)
 REAL_MIN = 2.0 ** -1022.0
 
 class DGMFilter(object):
-    def __init__(self, model, use_assoc_hist=True, merge_components=False):
+    def __init__(self, model, use_assoc_hist=True, merge_components=True):
         # Multi-object filter id
         self.id = 'DGM'
         self.has_labels = True

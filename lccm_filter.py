@@ -277,7 +277,7 @@ class LCCFilterWithMarks(object):
         self.var[k] = c1_update + c2_update
 
         unique_labels = unique(l_update)
-        N_k = round(min(c1_update, len(unique_labels)))
+        N_k = int(round(min(c1_update, len(unique_labels))))
         
         # Calculate combined weights
         if not assoc_hist is None and k > 0:
@@ -452,15 +452,12 @@ class LCCFilterWithMarks(object):
             P_ = P[:, :, idx]
             if not assoc_hist is None:
                 assoc_hist_ = [assoc_hist[i] for i, idx_b in enumerate(idx) if idx_b]
-
+                sim_probs = self.comp_sim_probabilities(label=lbl, hypotheses=assoc_hist_)
+            else:
+                sim_probs = np.ones(w_.shape)
             I = np.arange(len(l_))
             while len(I) > 0:
-                if not assoc_hist is None:
-                    # sim_probs = self.comp_sim_probabilities(label=lbl, hypotheses=assoc_hist_)
-                    # weights = w_ * sim_probs
-                    weights = w_
-                else:
-                    weights = w_
+                weights = w_ * sim_probs
                 j = np.argmax(weights)
                 
                 d_x_j = x_[:, I] - x_[:, j, None]

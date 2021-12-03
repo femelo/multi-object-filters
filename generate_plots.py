@@ -13,6 +13,7 @@
 # License: Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0>)    #
 import os
 import matplotlib.pyplot as plt
+import matplotlib.backends.backend_pdf
 import matplotlib.cm as cm
 import numpy as np
 import argparse

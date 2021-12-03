@@ -82,7 +82,13 @@ def run_trackers(run_id, tracker_ids, model, truth, c = 100.0, p = 1, print_flag
         result.mgm_time = tracker.mgm_time / measurement_set.K
         result.ospa = np.zeros((truth.K, ))
         for k in range(truth.K):
-            result.ospa[k] = ospa_dist(truth.X[k][[0, 2], :], tracker.X[k][[0, 2], :], c=c, p=p)
+            truth_X_k = np.array([[]])
+            tracks_X_k = np.array([[]])
+            if truth.X[k].shape[1] > 0:
+                truth_X_k = truth.X[k][[0, 2], :]
+            if tracker.X[k].shape[1] > 0:
+                tracks_X_k = tracker.X[k][[0, 2], :]
+            result.ospa[k] = ospa_dist(truth_X_k, tracks_X_k, c=c, p=p)
         result.sq_err = (result.n - truth.N) ** 2
         
         # Set result for a given tracker

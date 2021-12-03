@@ -1,6 +1,7 @@
 ###### Requirements ######`
 numpy
 scipy
+matplotlib
 termcolor
 argparse
 munkres >= 1.0.12

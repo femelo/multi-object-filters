@@ -254,8 +254,8 @@ def plot_ospa_performance(ground_truth, filters, save_figure=True):
         100 / 10) + 1, endpoint=True).astype(int)
 
     # Plot MOSPA versus time
-    markers = ['+', 'o', 'x', '*', 'square',
-               'diamond', 'pentagram', 'hexagram']
+    markers = ['+', 'o', 'x', '*', 's',
+               '^', 'v', 'h']
     # num_of_colors = n_f
     num_of_colors = 10
     colormap = cm.get_cmap('tab10', num_of_colors)

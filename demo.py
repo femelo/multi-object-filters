@@ -203,12 +203,15 @@ if __name__ == "__main__":
     if not (isinstance(clutter_rate, (int, float)) and clutter_rate > 0):
         raise AssertionError(colored('Invalid clutter rate.', 'red'))
 
-    # Set random seed
+    # Set random seed for ground truth generation
     np.random.seed(1)
 
     # Generate model
     model = generate_model(num_of_targets, prob_of_detection, clutter_rate, num_of_time_steps)
     truth = generate_ground_truth(model)
+
+    # Set random seed for measurement generation
+    np.random.seed(None) # will try to read from /dev/urandom or seed from the clock
 
     measurement_sets = {}
     results = {}

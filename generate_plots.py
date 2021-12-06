@@ -309,21 +309,78 @@ if __name__ == "__main__":
     argparser = argparse.ArgumentParser(
         description='Generate plots from tracking results using multi-object filters.')
     argparser.add_argument(
-        'results_file',
-        metavar='<input results file>',
+        'results_files',
+        metavar='<input results file(s)>',
         type=str,
-        help='Pickle file containing results from a previous run.')
+        nargs='+',
+        help='Pickle file(s) containing results from a previous run.')
     # Parse arguments
     args = argparser.parse_args()
-    results_file = os.path.abspath(os.path.expanduser(args.results_file))
+    results_files_ = [os.path.abspath(os.path.expanduser(r_file)) for r_file in args.results_files]
+    results_files = [r_file for r_file in results_files_ if os.path.exists(r_file)]
 
-    if not os.path.exists(results_file):
-        cprint('Provided results file does not exist.', 'red')
+    if len(results_files) == 0:
+        cprint('No provided results file exist.', 'red')
         exit()
 
-    # Load file
-    with open(results_file, 'rb') as f:
-        truth, measurement_set_list, performance_results, model = pickle.load(f)
+    # Load data from files and consolidate results
+    if len(results_files) > 1:
+        # Load data
+        results_all = dict()
+        measurement_sets_all = dict()
+        for r_file in results_files:
+            with open(r_file, 'rb') as f:
+                truth, measurement_set_list_, performance_results_, model = pickle.load(f)
+            for i, res in enumerate(performance_results_):
+                if not res.id in results_all.keys():
+                    results_all[res.id] = [res]
+                    measurement_sets_all[res.id] = [measurement_set_list_[i]]
+                else:
+                    results_all[res.id].append(res)
+                    measurement_sets_all[res.id].append(measurement_set_list_[i])
+        # Consolidate results
+        performance_results = []
+        measurement_set_list = []
+        tracker_ids = results_all.keys()
+        for t_id in tracker_ids:
+            result = Result(t_id)
+            # Collect results
+            num_of_runs = len(results_all[t_id])
+            n_ = np.vstack([results_all[t_id][i].n for i in range(num_of_runs)])
+            var_n_ = np.vstack([results_all[t_id][i].var_n for i in range(num_of_runs)])
+            ospa_ = np.vstack([results_all[t_id][i].ospa for i in range(num_of_runs)])
+            sq_err_ = np.vstack([results_all[t_id][i].sq_err for i in range(num_of_runs)])
+            run_time_ = np.array([results_all[t_id][i].run_time for i in range(num_of_runs)])
+            prd_time_ = np.array([results_all[t_id][i].prd_time for i in range(num_of_runs)])
+            gat_time_ = np.array([results_all[t_id][i].gat_time for i in range(num_of_runs)])
+            upd_time_ = np.array([results_all[t_id][i].upd_time for i in range(num_of_runs)])
+            mgm_time_ = np.array([results_all[t_id][i].mgm_time for i in range(num_of_runs)])
+            # Calculate mean values
+            result.n = np.nanmean(n_, axis=0)
+            result.var_n = np.nanmean(var_n_, axis=0)
+            result.ospa = np.nanmean(ospa_, axis=0)
+            result.sq_err = np.nanmean(sq_err_, axis=0)
+            result.run_time = np.nanmean(run_time_, axis=0)
+            result.prd_time = np.nanmean(prd_time_, axis=0)
+            result.gat_time = np.nanmean(gat_time_, axis=0)
+            result.upd_time = np.nanmean(upd_time_, axis=0)
+            result.mgm_time = np.nanmean(mgm_time_, axis=0)
+
+            if num_of_runs == 1:
+                run_id = 0
+            else:
+                run_id = np.argmin(np.sum(ospa_, axis=1) * np.sum(sq_err_, axis=1))
+
+            # Get exemplary run
+            result.X = results_all[t_id][run_id].X
+            result.labels = results_all[t_id][run_id].labels
+            result.has_labels = results_all[t_id][run_id].has_labels
+            result.label_max = results_all[t_id][run_id].label_max
+            performance_results.append(result)
+            measurement_set_list.append(measurement_sets_all[t_id][run_id])
+    else:
+        with open(results_files[0], 'rb') as f:
+            truth, measurement_set_list, performance_results, model = pickle.load(f)
 
     cprint('Average run times:', 'green')
     for res in performance_results:

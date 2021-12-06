@@ -567,7 +567,7 @@ class GLMBFilter(object):
 
             process.cdn = np.zeros((np.max(process.n), ))
             for n in range(np.max(process.n) + 1):
-                process.cdn = np.sum(process.w[process.n == n]) # extract probability of n targets
+                process.cdn[n] = np.sum(process.w[process.n == n]) # extract probability of n targets
         return
 
 

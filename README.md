@@ -26,6 +26,8 @@ Please get in touch by messages for addressing doubts or suggestions. If you hav
   - Argparse
   - Munkres >= 1.0.12
   - Pickle5
+  - Nuitka
+  - PyYAML
 
 ## Installation
 
@@ -60,3 +62,20 @@ python3 demo.py -h
 ```
 
 All figures for performance evaluation are saved in the folder 'figures/'.
+
+## Precompilation
+
+The application can be precompiled to run faster via Nuitka. First install the *patchelf* package:
+```
+sudo apt-get install patchelf
+```
+
+Then, for the compilation, just run the bash script:
+```
+./build.sh
+```
+
+The created standalone application *demo.bin* can be called as, for instance,
+```
+./demo.bin -f phd cphd lcc -v
+```

@@ -127,3 +127,15 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# VS Code
+.vscode/
+
+# Nuitka build files
+demo.bin
+demo.build/
+demo.dist/
+
+# Local Azure config file
+azure_batch/my-config.yaml
+

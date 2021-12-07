@@ -10,7 +10,7 @@ LOW_PRIORITY_POOL_NODE_COUNT: 0
 POOL_VM_SIZE: 'STANDARD_A1_v2'
 JOB_ID: 'MultiObjectFiltersPoolJob'
 NUMBER_OF_TASKS: 3
-TIMEOUT_PERIOD: 120 # in seconds (time for the tasks to complete)
+TIMEOUT_PERIOD: 120 # in minutes (time for the tasks to complete)
 # Application parameters
 APP_ID: 'multi-object-filters-demo'
 APP_VERSION: '1.1.0'

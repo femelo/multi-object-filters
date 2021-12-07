@@ -11,7 +11,7 @@ sys.path.append('.')
 sys.path.append('..')
 
 # Load parameters
-with open("my-config.yaml", 'r') as f:
+with open("config.yaml", 'r') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
 try:

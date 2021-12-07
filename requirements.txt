@@ -7,3 +7,4 @@ argparse
 munkres >= 1.0.12
 pickle5
 nuitka
+PyYAML

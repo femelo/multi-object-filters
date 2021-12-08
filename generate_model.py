@@ -27,7 +27,7 @@ class Model(object):
         A_0 = np.array([[1.0, T], [0.0, 1.0]])
         # Transition matrix
         self.F = sp.linalg.block_diag(A_0, A_0)
-        self.sigma_v = 2.0
+        self.sigma_v = 5.0
         Q_0 = (self.sigma_v ** 2) * np.array([[T ** 3 / 3, T ** 2 / 2], [T ** 2 / 2, T]])
         # Process noise covariance matrix
         self.Q = sp.linalg.block_diag(Q_0, Q_0)

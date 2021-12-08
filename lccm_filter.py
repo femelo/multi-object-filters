@@ -326,7 +326,7 @@ class LCCFilterWithMarks(object):
                 indexes = indexes_labels[i_l]
                 # n = 1  : takes just the best track
                 # n = n_l: takes the n_l-best tracks
-                n = 1
+                n = n_l
                 for idx in indexes[0:n]:
                     m_est[:, i] = m_update[:, idx]
                     l_est[i] = l_update[idx]
@@ -357,7 +357,7 @@ class LCCFilterWithMarks(object):
         idx = np.argsort(l_est)
         self.X[k] = m_est[:, idx]
         self.N[k] = N_k
-        self.labels[k] = unique(l_est[idx])
+        self.labels[k] = l_est[idx]
         self.label_max = max(l_est.tolist() + [self.label_max])
         # Save association history
         if not assoc_hist is None:

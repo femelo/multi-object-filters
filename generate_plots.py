@@ -138,20 +138,27 @@ def plot_tracks(ground_truth, measurement_sets, filters, model, save_figure=True
             colors = colormap(np.linspace(0.0, 1.0, num_of_colors))
 
         legend = legend_labels[2]
+        started_labels = []
         for k in range(measurement_set.K):
             X_k = filter.X[k]
             if X_k.shape[1] > 0:
                 if filter.has_labels:
                     labels_k = filter.labels[k]
                     for i, l_k in enumerate(labels_k):
-                        plt.plot(X_k[0, i], X_k[2, i], marker='o', markersize=np.sqrt(MARKER_SIZE),
+                        if not l_k in started_labels:
+                            started_labels.append(l_k) 
+                            plt.text(X_k[0, i], X_k[2, i], 'T{:02d}-{:02d}'.format(l_k, k), color=colors[(l_k % num_of_colors) - 1, :], fontsize=3, alpha=1.0, label=legend)
+                        # else:
+                        #     plt.text(X_k[0, i], X_k[2, i], '{:02d}'.format(k), color=colors[(l_k % num_of_colors) - 1, :], fontsize=2, alpha=0.5, label=legend)
+                        plt.plot(X_k[0, i], X_k[2, i], marker='.', markersize=np.sqrt(MARKER_SIZE),
                                  markerfacecolor='none', markeredgewidth=0.2, c=colors[(l_k % num_of_colors) - 1, :], alpha=0.5, label=legend)
                         if legend == legend_labels[2]:
                             legend = '_nolegend_'
                 else:
-                    plt.plot(X_k[0, :], X_k[2, :], marker='o', markersize=np.sqrt(MARKER_SIZE),
+                    plt.plot(X_k[0, :], X_k[2, :], marker='.', markersize=np.sqrt(MARKER_SIZE),
                              markerfacecolor='none', markeredgewidth=0.2, c='blue', alpha=0.5, linestyle='none', label=legend)
-                    # plt.scatter(X_k[0, :], X_k[2, :], marker='.', s=MARKER_SIZE, c='blue', alpha=0.5, label=legend)
+                    # for i in range(X_k.shape[1]):
+                    #     plt.text(X_k[0, i], X_k[2, i], '{:02d}'.format(k), color='blue', fontsize=2, alpha=0.5, label=legend)
                     if legend == legend_labels[2]:
                         legend = '_nolegend_'
         axis.legend(loc=2, fontsize=LEGEND_FONT_SIZE)

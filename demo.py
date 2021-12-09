@@ -33,6 +33,7 @@ from generate_measurements import generate_measurements
 from dependencies.ospa_dist import ospa_dist
 from generate_plots import generate_plots
 from phd_filter import PHDFilter
+from phdm_filter import PHDFilterWithMarks
 from cphd_filter import CPHDFilter
 from dgm_filter import DGMFilter
 from glmb_filter import GLMBFilter
@@ -48,19 +49,24 @@ def run_trackers(run_id, tracker_ids, model, truth, c = 100.0, p = 1, print_flag
     measurement_set = generate_measurements(model, truth)
     results_run = {}
     for tracker_id in tracker_ids:
-        if tracker_id == 1:
+        if tracker_id == TRACKER_ID_REVERSE_MAP['PHD']:
             tracker = PHDFilter(model)
-        elif tracker_id == 2:
+        elif tracker_id == TRACKER_ID_REVERSE_MAP['PHDM']:
+            tracker = PHDFilterWithMarks(model)
+        elif tracker_id == TRACKER_ID_REVERSE_MAP['CPHD']:
             tracker = CPHDFilter(model)
-        elif tracker_id == 3:
+        elif tracker_id == TRACKER_ID_REVERSE_MAP['DGM']:
             tracker = DGMFilter(model)
-        elif tracker_id == 4:
+        elif tracker_id == TRACKER_ID_REVERSE_MAP['GLMB']:
             tracker = GLMBFilter(model)
-        elif tracker_id == 5:
+        elif tracker_id == TRACKER_ID_REVERSE_MAP['JGLMB']:
             tracker = JointGLMBFilter(model)
-        elif tracker_id == 6:
+        elif tracker_id == TRACKER_ID_REVERSE_MAP['LCC']:
             tracker = LCCFilter(model)
+        elif tracker_id == TRACKER_ID_REVERSE_MAP['LCCM']:
+            tracker = LCCFilterWithMarks(model)
         else:
+            cprint('Filter {} is not implemented. Setting to LCCM.'.format(tracker_id), 'yellow')
             tracker = LCCFilterWithMarks(model)
 
         # Run

@@ -28,6 +28,10 @@ Please get in touch by messages for addressing doubts or suggestions. If you hav
   - Pickle5
   - Nuitka
   - PyYAML
+  - Natsort
+  - Azure-batch
+  - Azure-mgmt-batch
+  - Azure-identity
 
 ## Installation
 

@@ -1,4 +1,6 @@
 # Azure account and batch service parameters
+SUBSCRIPTION_ID: '[YOUR_SUBSCRIPTION_ID]'
+RESOURCE_GROUP_NAME: '[YOUR_RESOURCE_GROUP_NAME]'
 BATCH_ACCOUNT_NAME: '[YOUR_BATCH_ACCOUNT_NAME]'
 BATCH_ACCOUNT_KEY: '[YOUR_BATCH_ACCOUNT_KEY]'
 BATCH_ACCOUNT_URL: '[YOUR_BATCH_ACCOUNT_URL]'
@@ -13,7 +15,7 @@ NUMBER_OF_TASKS: 3
 TIMEOUT_PERIOD: 120 # in minutes (time for the tasks to complete)
 # Application parameters
 APP_ID: 'multi-object-filters-demo'
-APP_VERSION: '1.1.0'
+APP_VERSION: '1.0.0'
 APP_BINARY: 'demo.bin'
 APP_ARGS: '-f phd cphd lccm -pd 0.95 -nt 15'
 OUTPUT_DIR: 'results'

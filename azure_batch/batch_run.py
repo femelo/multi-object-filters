@@ -6,23 +6,63 @@ import os
 import sys
 import time
 import yaml
+from copy import copy
+from natsort import natsorted
 from math import floor, log10
 sys.path.append('.')
 sys.path.append('..')
+sys.path.append('azure_batch')
+
+CONFIG_FILE = 'config.yaml'
 
 # Load parameters
-with open("config.yaml", 'r') as f:
-    config = yaml.load(f, Loader=yaml.FullLoader)
+FOLDERS = ['.', '..', 'azure_batch']
+config_file_found = False
+for folder in FOLDERS:
+    path_to_config_file = os.path.abspath(os.path.join(folder, CONFIG_FILE))
+    if os.path.exists(path_to_config_file):
+        config_file_found = True
+        break
+if config_file_found:
+    with open(path_to_config_file, 'r') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+else:
+    print('Could not find the configuration file (yaml). Please make sure the file is in the repository folder.')
+    exit()
 
 try:
     input = raw_input
 except NameError:
     pass
 
-import azure.storage.blob as azureblob
+import azure.storage.blob as azure_blob
 import azure.batch.batch_service_client as batch
-import azure.batch.batch_auth as batchauth
-import azure.batch.models as batchmodels
+import azure.batch.batch_auth as batch_auth
+import azure.batch.models as batch_models
+import azure.mgmt.batch as batch_management
+import azure.identity as identity
+
+def get_latest_app_version(batch_mgmt_client, app_id):
+    """
+    Given the name of the batch application, returns the latest version in use.
+    Note: The assumption here is that the latest version is the one set as the default version. Natsort will sort the
+    versions regardless of most formats, and return the ordered  list.
+    :param batch_client: the batch client
+    :param app_id: the name of the application
+    :return: the latest version present in the list of application packages for the application
+    """
+    iterator = batch_mgmt_client.application_package.list(
+        resource_group_name=config['RESOURCE_GROUP_NAME'], 
+        account_name=config['BATCH_ACCOUNT_NAME'],
+        application_name=app_id
+    )
+    versions = []
+    while True:
+        try:
+            versions.append(iterator.next().name)
+        except StopIteration:
+            break
+    return natsorted(versions)[-1]
 
 # Update the Batch and Storage account credential strings in config.yaml with values
 # unique to your accounts. These are used when constructing connection strings
@@ -97,13 +137,13 @@ def upload_file_to_container(block_blob_client, container_name, file_path):
 
     # Obtain the SAS token for the container.
     sas_token = get_container_sas_token(block_blob_client,
-                                        container_name, azureblob.BlobPermissions.READ)
+                                        container_name, azure_blob.BlobPermissions.READ)
 
     sas_url = block_blob_client.make_blob_url(container_name,
                                               blob_name,
                                               sas_token=sas_token)
 
-    return batchmodels.ResourceFile(file_path=blob_name,
+    return batch_models.ResourceFile(file_path=blob_name,
                                     http_url=sas_url)
 
 def get_container_sas_token(block_blob_client,
@@ -145,7 +185,7 @@ def get_container_sas_url(block_blob_client,
     """
     # Obtain the SAS token for the container.
     sas_token = get_container_sas_token(block_blob_client,
-                                        container_name, azureblob.BlobPermissions.WRITE)
+                                        container_name, azure_blob.BlobPermissions.WRITE)
 
     # Construct SAS URL for the container
     container_sas_url = "https://{}.blob.core.windows.net/{}?{}".format(
@@ -153,7 +193,7 @@ def get_container_sas_url(block_blob_client,
 
     return container_sas_url
 
-def create_pool(batch_service_client, pool_id):
+def create_pool(batch_service_client, pool_id, app_id, app_version):
     """
     Creates a pool of compute nodes with the specified OS settings.
 
@@ -172,8 +212,8 @@ def create_pool(batch_service_client, pool_id):
     # https://azure.microsoft.com/documentation/articles/batch-linux-nodes/
     new_pool = batch.models.PoolAddParameter(
         id=pool_id,
-        virtual_machine_configuration=batchmodels.VirtualMachineConfiguration(
-            image_reference=batchmodels.ImageReference(
+        virtual_machine_configuration=batch_models.VirtualMachineConfiguration(
+            image_reference=batch_models.ImageReference(
                 publisher="Canonical",
                 offer="UbuntuServer",
                 sku="18.04-LTS",
@@ -184,8 +224,8 @@ def create_pool(batch_service_client, pool_id):
         target_dedicated_nodes=config['DEDICATED_POOL_NODE_COUNT'],
         target_low_priority_nodes=config['LOW_PRIORITY_POOL_NODE_COUNT'],
         application_package_references=[
-            batchmodels.ApplicationPackageReference(
-                application_id=config['APP_ID'], version=config['APP_VERSION']
+            batch_models.ApplicationPackageReference(
+                application_id=app_id, version=app_version
             )
         ],
     )
@@ -197,13 +237,13 @@ def create_pool(batch_service_client, pool_id):
     nodes = wait_for_all_nodes_state(
         batch_service_client, new_pool,
         frozenset(
-            (batchmodels.ComputeNodeState.start_task_failed,
-             batchmodels.ComputeNodeState.unusable,
-             batchmodels.ComputeNodeState.idle)
+            (batch_models.ComputeNodeState.start_task_failed,
+             batch_models.ComputeNodeState.unusable,
+             batch_models.ComputeNodeState.idle)
         )
     )
     # ensure all node are idle
-    if any(node.state != batchmodels.ComputeNodeState.idle for node in nodes):
+    if any(node.state != batch_models.ComputeNodeState.idle for node in nodes):
         raise RuntimeError('node(s) of pool {} not in idle state'.format(
             pool_id))
 
@@ -224,7 +264,7 @@ def create_job(batch_service_client, job_id, pool_id):
 
     batch_service_client.job.add(job)
 
-def add_tasks(batch_service_client, job_id, num_of_tasks, output_container_sas_url):
+def add_tasks(batch_service_client, job_id, num_of_tasks, output_container_sas_url, app_id, app_version):
     """
     Adds a task for each input file in the collection to the specified job.
 
@@ -240,16 +280,16 @@ def add_tasks(batch_service_client, job_id, num_of_tasks, output_container_sas_u
     tasks = list()
 
     # Get remote app path
-    app_id = config['APP_ID']
-    app_version = config['APP_VERSION']
+    app_id_ = copy(app_id)
+    app_version_ = copy(app_version)
     for c in ['.', '-', '#']:
-        if c in app_id:
-            app_id = app_id.replace(c, '_')
-        if c in app_version:
-            app_version = app_version.replace(c, '_')
+        if c in app_id_:
+            app_id_ = app_id_.replace(c, '_')
+        if c in app_version_:
+            app_version_ = app_version_.replace(c, '_')
     remote_app_path = '/'.join(
         [
-            '_'.join(['$AZ_BATCH_APP_PACKAGE', app_id, app_version]),
+            '_'.join(['$AZ_BATCH_APP_PACKAGE', app_id_, app_version_]),
             config['APP_BINARY']
         ]
     )
@@ -264,13 +304,13 @@ def add_tasks(batch_service_client, job_id, num_of_tasks, output_container_sas_u
         tasks.append(batch.models.TaskAddParameter(
             id='Task-{{:0{:d}}}'.format(d).format(idx),
             command_line=command,
-            output_files=[batchmodels.OutputFile(
+            output_files=[batch_models.OutputFile(
                 file_pattern=output_file_path,
-                destination=batchmodels.OutputFileDestination(
-                          container=batchmodels.OutputFileBlobContainerDestination(
+                destination=batch_models.OutputFileDestination(
+                          container=batch_models.OutputFileBlobContainerDestination(
                               container_url=output_container_sas_url)),
-                upload_options=batchmodels.OutputFileUploadOptions(
-                    upload_condition=batchmodels.OutputFileUploadCondition.task_success))]
+                upload_options=batch_models.OutputFileUploadOptions(
+                    upload_condition=batch_models.OutputFileUploadCondition.task_success))]
         )
         )
     batch_service_client.task.add_collection(job_id, tasks)
@@ -287,7 +327,7 @@ def create_pool_if_not_exist(batch_client, pool):
         print("Attempting to create pool:", pool.id)
         batch_client.pool.add(pool)
         print("Created pool:", pool.id)
-    except batchmodels.BatchErrorException as e:
+    except batch_models.BatchErrorException as e:
         if e.error.code != "PoolExists":
             raise
         else:
@@ -350,7 +390,7 @@ def wait_for_tasks_to_complete(batch_service_client, job_id, timeout):
         tasks = batch_service_client.task.list(job_id)
 
         incomplete_tasks = [task for task in tasks if
-                            task.state != batchmodels.TaskState.completed]
+                            task.state != batch_models.TaskState.completed]
         if not incomplete_tasks:
             print()
             return True
@@ -369,7 +409,7 @@ if __name__ == '__main__':
 
     # Create the blob client, for use in obtaining references to
     # blob storage containers and uploading files to containers.
-    blob_client = azureblob.BlockBlobService(
+    blob_client = azure_blob.BlockBlobService(
         account_name=config['STORAGE_ACCOUNT_NAME'],
         account_key=config['STORAGE_ACCOUNT_KEY'])
 
@@ -386,11 +426,19 @@ if __name__ == '__main__':
     output_container_sas_url = get_container_sas_url(
         blob_client,
         output_container_name,
-        azureblob.BlobPermissions.WRITE)
+        azure_blob.BlobPermissions.WRITE)
 
+    # Log in
+    credential = identity.AzureCliCredential()
+    # Create batch management client
+    batch_mgmt_client = batch_management.BatchManagementClient(
+        credential = credential, subscription_id=config['SUBSCRIPTION_ID'])
+    app_id = config['APP_ID']
+    app_version = get_latest_app_version(batch_mgmt_client, app_id)
+    print('Job will use the latest version of the application [{}-{}].'.format(app_id, app_version))
     # Create a Batch service client. We'll now be interacting with the Batch
     # service in addition to Storage
-    credentials = batchauth.SharedKeyCredentials(config['BATCH_ACCOUNT_NAME'],
+    credentials = batch_auth.SharedKeyCredentials(config['BATCH_ACCOUNT_NAME'],
                                                  config['BATCH_ACCOUNT_KEY'])
 
     batch_client = batch.BatchServiceClient(
@@ -400,7 +448,7 @@ if __name__ == '__main__':
     try:
         # Create the pool that will contain the compute nodes that will execute the
         # tasks.
-        create_pool(batch_client, config['POOL_ID'])
+        create_pool(batch_client, config['POOL_ID'], app_id, app_version)
 
         # Create the job that will run the tasks.
         create_job(batch_client, config['JOB_ID'], config['POOL_ID'])
@@ -408,7 +456,8 @@ if __name__ == '__main__':
         # Add the tasks to the job. Pass the input files and a SAS URL
         # to the storage container for output files.
         add_tasks(batch_client, config['JOB_ID'],
-                  num_of_tasks, output_container_sas_url)
+                  num_of_tasks, output_container_sas_url,
+                  app_id, app_version)
 
         # Pause execution until tasks reach Completed state.
         wait_for_tasks_to_complete(batch_client,
@@ -418,7 +467,7 @@ if __name__ == '__main__':
         print("Success! All tasks reached the 'Completed' state within the "
               "specified timeout period.")
 
-    except batchmodels.BatchErrorException as err:
+    except batch_models.BatchErrorException as err:
         print_batch_exception(err)
         raise
 

@@ -8,3 +8,7 @@ munkres >= 1.0.12
 pickle5
 nuitka
 PyYAML
+natsort
+azure-batch
+azure-mgmt-batch
+azure-identity

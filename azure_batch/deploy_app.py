@@ -2,7 +2,6 @@
 from __future__ import print_function
 import os
 import sys
-import logging
 import yaml
 from natsort import natsorted
 from zipfile import ZipFile
@@ -55,8 +54,11 @@ def get_latest_app_version(batch_mgmt_client, app_id):
             versions.append(iterator.next().name)
         except StopIteration:
             break
-    logging.debug(natsorted(versions))
-    return natsorted(versions)[-1]
+    if len(versions) > 0:
+        latest_version = natsorted(versions)[-1]
+    else:
+        latest_version = None
+    return latest_version
 
 def zip_and_upload(path_to_binary, app_id, app_version, app_package):
     # Zip file
@@ -119,16 +121,17 @@ def set_application_as_default(batch_mgmt_client, app_id, app_version):
     )
 
 def increase_version(version):
-    if len(version) == 0:
-        new_version = '1.0.0'
-    major, minor, _ = version.split('.')
-    if int(minor) + 1 == 10:
-        new_minor = '0'
-        new_major = str(int(major) + 1)
+    if version is not None:     
+        major, minor, _ = version.split('.')
+        if int(minor) + 1 == 10:
+            new_minor = '0'
+            new_major = str(int(major) + 1)
+        else:
+            new_minor = str(int(minor) + 1)
+            new_major = major
+        new_version = '.'.join([new_major, new_minor, '0'])
     else:
-        new_minor = str(int(minor) + 1)
-        new_major = major
-    new_version = '.'.join([new_major, new_minor, '0'])
+        new_version = '1.0.0'
     return new_version
 
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import print_function
 import datetime
-import io
 import os
 import sys
 import time
@@ -62,7 +61,11 @@ def get_latest_app_version(batch_mgmt_client, app_id):
             versions.append(iterator.next().name)
         except StopIteration:
             break
-    return natsorted(versions)[-1]
+    if len(versions) > 0:
+        latest_version = natsorted(versions)[-1]
+    else:
+        latest_version = None
+    return latest_version
 
 # Update the Batch and Storage account credential strings in config.yaml with values
 # unique to your accounts. These are used when constructing connection strings
@@ -407,6 +410,18 @@ if __name__ == '__main__':
     print('Sample start: {}'.format(start_time))
     print()
 
+    # Log in
+    credential = identity.AzureCliCredential()
+    # Create batch management client
+    batch_mgmt_client = batch_management.BatchManagementClient(
+        credential = credential, subscription_id=config['SUBSCRIPTION_ID'])
+    app_id = config['APP_ID']
+    app_version = get_latest_app_version(batch_mgmt_client, app_id)
+    if app_version is None:
+        print('No version of [{}] has been found in Azure. Please deploy the application first.'.format(app_id))
+        exit()
+    print('Job will use the latest version of the application [{}-{}].'.format(app_id, app_version))
+
     # Create the blob client, for use in obtaining references to
     # blob storage containers and uploading files to containers.
     blob_client = azure_blob.BlockBlobService(
@@ -428,14 +443,6 @@ if __name__ == '__main__':
         output_container_name,
         azure_blob.BlobPermissions.WRITE)
 
-    # Log in
-    credential = identity.AzureCliCredential()
-    # Create batch management client
-    batch_mgmt_client = batch_management.BatchManagementClient(
-        credential = credential, subscription_id=config['SUBSCRIPTION_ID'])
-    app_id = config['APP_ID']
-    app_version = get_latest_app_version(batch_mgmt_client, app_id)
-    print('Job will use the latest version of the application [{}-{}].'.format(app_id, app_version))
     # Create a Batch service client. We'll now be interacting with the Batch
     # service in addition to Storage
     credentials = batch_auth.SharedKeyCredentials(config['BATCH_ACCOUNT_NAME'],
